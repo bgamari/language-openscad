@@ -36,6 +36,7 @@ data Argument a = Argument a | NamedArgument Ident a
 data Object
     = Module Ident [Argument Expr] (Maybe Object)
     | Objects [Object]  -- ^ Implicit union
+    | If Expr Object (Maybe Object)
     | BackgroundMod Object
     | DebugMod Object
     | RootMod Object
@@ -151,21 +152,31 @@ parseObject :: Parser Object
 parseObject = skipSpace *> object <* skipSpace
   where
     object =
-          (moduleRef <?> "module reference")
-      <|> (Objects <$> between (char '{') (char '}') (many parseObject))
-      <|> mod '%' BackgroundMod
-      <|> mod '#' DebugMod
-      <|> mod '!' RootMod
-      <|> mod '*' DisableMod
+      choice [ moduleRef <?> "module reference"
+             , conditional
+             , Objects <$> between (char '{') (char '}') (many parseObject)
+             , mod '%' BackgroundMod
+             , mod '#' DebugMod
+             , mod '!' RootMod
+             , mod '*' DisableMod
+             ]
+
     moduleRef = do
       name <- withSpaces ident
       args <- arguments
       skipSpace
-      block <- (char ';' >> return Nothing)
-        <|> Just <$> parseObject
-        <|> (Just <$> between (char '{') (char '}') parseObject)
+      block <- (char ';' >> return Nothing) <|> Just <$> parseObject
       return $ Module name args block
 
+    conditional = do
+      withSpaces $ string "if"
+      e <- between (char '(') (char ')') expression
+      _then <- parseObject
+      _else <- optional $ do
+        withSpaces $ string "else"
+        parseObject
+      return $ If e _then _else
+      
     mod :: Char -> (Object -> Object) -> Parser Object
     mod c f = do
       withSpaces (char c)
