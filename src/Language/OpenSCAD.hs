@@ -149,7 +149,7 @@ double' = do
       digits <- reverse <$> many digitOrd
       exp <- option 0 $ char 'e' >> signed decimal
       let n = foldl' (+) 0 $ zipWith (*) [10^i | i <- [0..]] digits
-      return $ f $ realToFrac n / realToFrac (10^(length digits + 1 + exp))
+      return $ f $ realToFrac n / realToFrac (10^(length digits + exp))
     digitOrd = do
       d <- digit
       return $ ord d - ord '0'
