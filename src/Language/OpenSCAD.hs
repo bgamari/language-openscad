@@ -287,7 +287,7 @@ parseTopLevel =
       char '<'
       path <- many1 (notChar '>')
       char '>'
-      skipSpace >> option ';' (char ';')
+      skipSpace >> optional (char ';')
       return path
 
 parseFile :: LBS.ByteString -> Either String [TopLevel]
