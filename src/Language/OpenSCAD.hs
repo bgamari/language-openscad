@@ -35,6 +35,7 @@ data Argument a = Argument a | NamedArgument Ident a
 -- | An OpenSCAD geometry object
 data Object
     = Module Ident [Argument Expr] (Maybe Object)
+    | ForLoop Ident Expr Object
     | Objects [Object]  -- ^ Implicit union
     | If Expr Object (Maybe Object)
     | BackgroundMod Object
@@ -170,8 +171,9 @@ parseObject :: Parser Object
 parseObject = skipSpace *> object <* skipSpace
   where
     object =
-      choice [ moduleRef <?> "module reference"
-             , conditional
+      choice [ moduleRef   <?> "module reference"
+             , forLoop     <?> "for loop"
+             , conditional <?> "if statement"
              , Objects <$> between (char '{') (char '}') (many parseObject)
              , mod '%' BackgroundMod
              , mod '#' DebugMod
@@ -185,6 +187,16 @@ parseObject = skipSpace *> object <* skipSpace
       skipSpace
       block <- (char ';' >> return Nothing) <|> Just <$> parseObject
       return $ Module name args block
+
+    forLoop = do
+      withSpaces $ string "for"
+      char '('
+      var <- ident
+      withSpaces $ char '='
+      range <- expression 
+      char ')'
+      body <- parseObject
+      return $ ForLoop var range body
 
     conditional = do
       withSpaces $ string "if"
