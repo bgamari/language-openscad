@@ -48,6 +48,7 @@ data Expr
     = EVar Ident
     | ENum Double
     | EVec [Expr]
+    | ERange (Range Expr)
     | EString String
     | EBool Bool
     | EFunc Ident [Argument Expr]
@@ -58,6 +59,11 @@ data Expr
     | EDiv Expr Expr
     | EParen Expr
     deriving (Show)
+    
+data Range a = Range a          -- ^ start
+                     a          -- ^ end
+                     (Maybe a)  -- ^ step
+             deriving (Show)
 
 -- | A OpenSCAD scope
 data Scad
@@ -99,11 +105,23 @@ arguments = list <?> "argument list"
       return $ NamedArgument name value
     arg = skipSpace >> Argument <$> expression
 
+range :: Parser (Range Expr)
+range = do
+    withSpaces $ char '('
+    start <- expression
+    withSpaces $ char ':'
+    stop <- expression
+    step <- option Nothing $ do
+        withSpaces $ char ':'
+        Just <$> expression
+    return $ Range start stop step
+
 term :: Parser Expr
 term = choice
     [ funcRef
     , ENum <$> signed double
     , ENegate <$> (char '-' *> term)
+    , ERange <$> range
     , EVec <$> betweenSepBy (char ',') (char '[') (char ']') (withSpaces expression)
     , EString <$> between (char '"') (char '"') (many $ notChar '"')
     , EBool <$> choice [ string "true" >> return True
