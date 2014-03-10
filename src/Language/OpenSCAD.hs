@@ -212,14 +212,14 @@ withSpaces parser = skipSpace *> parser <* skipSpace
 
 -- | Things which can appear at the top level of an OpenSCAD source file           
 data TopLevel = TopLevelScope Scad
+              | UseDirective String
               | IncludeDirective String
-              | ImportDirective String
               deriving (Show)
 
 parseTopLevel :: Parser TopLevel
 parseTopLevel =
     choice [ TopLevelScope <$> parseScad
-           , ImportDirective <$> fileDirective "import"
+           , UseDirective <$> fileDirective "use"
            , IncludeDirective <$> fileDirective "include"
            ]
   where
