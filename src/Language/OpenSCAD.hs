@@ -292,8 +292,13 @@ parseTopLevel =
 
 parseFile :: LBS.ByteString -> Either String [TopLevel]
 parseFile src = 
-    let stripped = stripComments src
-    in parseOnly (many1 parseTopLevel) stripped
+    go $ parse (many1 parseTopLevel) (stripComments src)
+  where
+    go (Fail rem ctxs err) = Left $ err ++ ": " ++ show ctxs
+    go (Partial feed)      = go $ feed LBS.empty
+    go (Done rem r)
+      | LBS.null rem       = Right r
+      | otherwise          = Left $ "Remaining: " ++ show rem
 
 stripComments :: LBS.ByteString -> LBS.ByteString
 stripComments = go LBS.empty
