@@ -212,6 +212,9 @@ parseObject = skipSpace *> object <* skipSpace
       withSpaces (char c)
       f <$> parseObject
 
+singleton :: a -> [a]
+singleton x = [x]
+
 parseScad :: Parser Scad
 parseScad = skipSpace >> scad
   where
@@ -224,7 +227,9 @@ parseScad = skipSpace >> scad
       withSpaces $ string "module"
       name <- ident
       args <- withSpaces arguments
-      body <- between (char '{') (char '}') $ many parseScad
+      body <- choice [ singleton <$> parseScad
+                     , between (char '{') (char '}') $ many parseScad
+                     ]
       return $ ModuleDef name args body
 
     arguments = betweenSepBy (char ',') (char '(') (char ')') $ withSpaces $ do
