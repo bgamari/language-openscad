@@ -160,6 +160,7 @@ term = withSpaces $ choice
     [ funcRef
     , ENum <$> signed double'
     , ENegate <$> (char '-' *> term)
+    , char '+' *> term
     , ENot <$> (char '!' *> term)
     , ERange <$> range
     , EVec <$> betweenSepBy (char ',') (char '[') (char ']') (withSpaces expression)
