@@ -141,6 +141,7 @@ double' :: Parser Double
 double' = do
     choice [ double
            , char '-' >> go negate
+           , char '+' >> go id
            , go id
            ]
   where
