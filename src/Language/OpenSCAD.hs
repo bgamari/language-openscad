@@ -5,11 +5,8 @@ module Language.OpenSCAD
     , Argument(..)
     , Expr(..)
     , ident
-    , parseObject
     , Scad(..)
-    , parseScad
     , TopLevel(..) 
-    , parseTopLevel
     , parseFile
     , stripComments
     ) where
@@ -256,25 +253,23 @@ block parser = do
     optional (char ';')
     return xs
 
-parseObject :: Parser Object
-parseObject = skipSpace *> object <* skipSpace
+object :: Parser Object
+object = withSpaces $ choice
+    [ forLoop     <?> "for loop"
+    , conditional <?> "if statement"
+    , moduleRef   <?> "module reference"
+    , Objects <$> block object
+    , mod '%' BackgroundMod
+    , mod '#' DebugMod
+    , mod '!' RootMod
+    , mod '*' DisableMod
+    ]
   where
-    object =
-      choice [ forLoop     <?> "for loop"
-             , conditional <?> "if statement"
-             , moduleRef   <?> "module reference"
-             , Objects <$> block parseObject
-             , mod '%' BackgroundMod
-             , mod '#' DebugMod
-             , mod '!' RootMod
-             , mod '*' DisableMod
-             ]
-
     moduleRef = do
       name <- withSpaces ident
       args <- arguments
       skipSpace
-      block <- (char ';' >> return Nothing) <|> Just <$> parseObject
+      block <- (char ';' >> return Nothing) <|> Just <$> object
       return $ Module name args block
 
     forLoop = do
@@ -284,40 +279,40 @@ parseObject = skipSpace *> object <* skipSpace
       withSpaces $ char '='
       range <- expression 
       char ')'
-      body <- parseObject
+      body <- object
       return $ ForLoop var range body
 
     conditional = do
       withSpaces $ string "if"
       e <- between (char '(') (char ')') expression
-      _then <- parseObject
+      _then <- object
       _else <- optional $ do
         withSpaces $ string "else"
-        parseObject
+        object
       return $ If e _then _else
       
     mod :: Char -> (Object -> Object) -> Parser Object
     mod c f = do
       withSpaces (char c)
-      f <$> parseObject
+      f <$> object
 
 singleton :: a -> [a]
 singleton x = [x]
 
-parseScad :: Parser Scad
-parseScad = skipSpace >> scad
+scad :: Parser Scad
+scad = skipSpace >> scad
   where
     scad = choice [ moduleDef                <?> "module definition"
                   , varDef                   <?> "variable definition"
                   , funcDef                  <?> "function definition"
-                  , (Object <$> parseObject) <?> "object"
+                  , (Object <$> object)      <?> "object"
                   ]
     moduleDef = do
       withSpaces $ string "module"
       name <- ident
       args <- withSpaces arguments
-      body <- choice [ singleton <$> parseScad
-                     , between (char '{') (char '}') $ many parseScad
+      body <- choice [ singleton <$> scad
+                     , between (char '{') (char '}') $ many scad
                      ]
       return $ ModuleDef name args body
 
@@ -351,9 +346,9 @@ data TopLevel = TopLevelScope Scad
               | IncludeDirective String
               deriving (Show)
 
-parseTopLevel :: Parser TopLevel
-parseTopLevel =
-    choice [ TopLevelScope <$> parseScad
+topLevel :: Parser TopLevel
+topLevel =
+    choice [ TopLevelScope <$> scad
            , UseDirective <$> fileDirective "use"
            , IncludeDirective <$> fileDirective "include"
            ]
@@ -368,7 +363,7 @@ parseTopLevel =
 
 parseFile :: LBS.ByteString -> Either String [TopLevel]
 parseFile src = 
-    go $ parse (many1 parseTopLevel) (stripComments src)
+    go $ parse (many1 topLevel) (stripComments src)
   where
     go (Fail rem ctxs err) = Left $ err ++ ": " ++ show ctxs
     go (Partial feed)      = go $ feed LBS.empty
