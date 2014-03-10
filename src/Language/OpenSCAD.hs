@@ -16,7 +16,7 @@ module Language.OpenSCAD
 
 import Data.Attoparsec.Char8
 import Control.Applicative
-import Control.Monad (guard)
+import Control.Monad (guard, void)
 import Data.List (foldl')
 import Data.Char (ord)
 import Data.Monoid ((<>))
@@ -31,7 +31,7 @@ identChar = inClass "a-zA-Z0-9_"
 
 ident :: Parser Ident
 ident = do
-    c <- satisfy $ inClass "$a-zA-Z_"
+    c <- satisfy $ inClass "$a-zA-Z0-9_"
     rest <- many $ satisfy identChar
     return $ Ident (c:rest)
 
@@ -138,7 +138,7 @@ range = do
 
 -- | Accept decimals without leading zero
 double' :: Parser Double
-double' = do
+double' = notIdent $ do
     choice [ double
            , char '-' >> go negate
            , char '+' >> go id
@@ -178,11 +178,15 @@ term = withSpaces $ choice
       args <- arguments
       return $ EFunc name args
 
+notIdent :: Parser a -> Parser a
+notIdent parser = do
+    x <- parser
+    next <- peekChar
+    guard $ maybe True (not . identChar) next
+    return x
+
 keyword :: LBS.ByteString -> Parser ()
-keyword word = do
-  string word
-  next <- peekChar
-  guard $ maybe True (not . identChar) next
+keyword word = void $ notIdent (string word)
 
 expression :: Parser Expr
 expression = do
