@@ -155,7 +155,7 @@ double' = do
       return $ ord d - ord '0'
 
 term :: Parser Expr
-term = choice
+term = withSpaces $ choice
     [ funcRef
     , ENum <$> signed double'
     , ENegate <$> (char '-' *> term)
