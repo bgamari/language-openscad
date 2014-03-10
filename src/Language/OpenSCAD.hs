@@ -108,13 +108,14 @@ arguments = list <?> "argument list"
 
 range :: Parser (Range Expr)
 range = do
-    withSpaces $ char '('
+    withSpaces $ char '['
     start <- expression
     withSpaces $ char ':'
     stop <- expression
     step <- option Nothing $ do
         withSpaces $ char ':'
         Just <$> expression
+    withSpaces $ char ']'
     return $ Range start stop step
 
 term :: Parser Expr
