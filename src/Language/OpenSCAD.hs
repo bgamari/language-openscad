@@ -357,8 +357,9 @@ parseFile src =
     go (Fail rem ctxs err) = Left $ err ++ ": " ++ show ctxs
     go (Partial feed)      = go $ feed LBS.empty
     go (Done rem r)
-      | LBS.null rem       = Right r
-      | otherwise          = Left $ "Remaining: " ++ show rem
+      | LBS.null (strip rem) = Right r
+      | otherwise            = Left $ "Remaining: " ++ show rem
+    strip = LBS.filter (not . isSpace)
 
 stripComments :: LBS.ByteString -> LBS.ByteString
 stripComments = go LBS.empty
