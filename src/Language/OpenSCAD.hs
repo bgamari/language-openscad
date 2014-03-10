@@ -16,6 +16,8 @@ module Language.OpenSCAD
 
 import Data.Attoparsec.Char8
 import Control.Applicative
+import Data.List (foldl')
+import Data.Char (ord)
 import Data.Monoid ((<>))
 import qualified Data.ByteString.Char8 as LBS
 
@@ -124,10 +126,28 @@ range = do
     withSpaces $ char ']'
     return $ Range start stop step
 
+-- | Accept decimals without leading zero
+double' :: Parser Double
+double' = do
+    choice [ double
+           , char '-' >> go negate
+           , go id
+           ]
+  where
+    go f = do
+      char '.'
+      digits <- reverse <$> many digitOrd
+      exp <- option 0 $ char 'e' >> signed decimal
+      let n = foldl' (+) 0 $ zipWith (*) [10^i | i <- [0..]] digits
+      return $ f $ realToFrac n / realToFrac (10^(length digits + 1 + exp))
+    digitOrd = do
+      d <- digit
+      return $ ord d - ord '0'
+
 term :: Parser Expr
 term = choice
     [ funcRef
-    , ENum <$> signed double
+    , ENum <$> signed double'
     , ENegate <$> (char '-' *> term)
     , ERange <$> range
     , EVec <$> betweenSepBy (char ',') (char '[') (char ']') (withSpaces expression)
