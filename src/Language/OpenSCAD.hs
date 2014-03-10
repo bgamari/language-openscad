@@ -222,7 +222,7 @@ between start end parser = do
 
 block :: Parser a -> Parser [a]
 block parser = do
-    xs <- between (char '{') (char '}') (many parser)
+    xs <- between (char '{' >> skipSpace) (char '}') (many parser)
     skipSpace
     optional (char ';')
     return xs
