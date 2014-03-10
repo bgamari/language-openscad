@@ -180,6 +180,13 @@ between start end parser = do
     end
     return p
 
+block :: Parser a -> Parser [a]
+block parser = do
+    xs <- between (char '{') (char '}') (many parser)
+    skipSpace
+    optional (char ';')
+    return xs
+
 parseObject :: Parser Object
 parseObject = skipSpace *> object <* skipSpace
   where
@@ -187,7 +194,7 @@ parseObject = skipSpace *> object <* skipSpace
       choice [ forLoop     <?> "for loop"
              , conditional <?> "if statement"
              , moduleRef   <?> "module reference"
-             , Objects <$> between (char '{') (char '}') (many parseObject)
+             , Objects <$> block parseObject
              , mod '%' BackgroundMod
              , mod '#' DebugMod
              , mod '!' RootMod
