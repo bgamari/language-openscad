@@ -184,9 +184,9 @@ parseObject :: Parser Object
 parseObject = skipSpace *> object <* skipSpace
   where
     object =
-      choice [ moduleRef   <?> "module reference"
-             , forLoop     <?> "for loop"
+      choice [ forLoop     <?> "for loop"
              , conditional <?> "if statement"
+             , moduleRef   <?> "module reference"
              , Objects <$> between (char '{') (char '}') (many parseObject)
              , mod '%' BackgroundMod
              , mod '#' DebugMod
