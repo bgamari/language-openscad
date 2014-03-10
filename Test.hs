@@ -7,7 +7,6 @@ import qualified Data.ByteString as BS
        
 main = do
     example <- BS.readFile "hi.scad"
-    --example <- BS.readFile "SMAConnectorPanelMount.scad"
-    print $ parseOnly (many1 parseScad) example
+    print $ parseOnly (many1 parseTopLevel) example
     --let example = "(hi=5)"
     --print $ parseOnly (arguments) example

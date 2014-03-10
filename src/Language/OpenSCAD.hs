@@ -4,11 +4,13 @@ module Language.OpenSCAD
     ( Ident(..)
     , Argument(..)
     , Expr(..)
-    , Scad(..)
     , ident
     , parseObject
+    , Scad(..)
     , parseScad
-    , arguments
+    , TopLevel(..) 
+    , parseTopLevel
+    , parseFile
     , stripComments
     ) where
 
@@ -207,6 +209,33 @@ parseScad = skipSpace >> scad
 
 withSpaces :: Parser a -> Parser a
 withSpaces parser = skipSpace *> parser <* skipSpace
+
+-- | Things which can appear at the top level of an OpenSCAD source file           
+data TopLevel = TopLevelScope Scad
+              | IncludeDirective String
+              | ImportDirective String
+              deriving (Show)
+
+parseTopLevel :: Parser TopLevel
+parseTopLevel =
+    choice [ TopLevelScope <$> parseScad
+           , ImportDirective <$> fileDirective "import"
+           , IncludeDirective <$> fileDirective "include"
+           ]
+  where
+    fileDirective keyword = do
+      string keyword
+      skipSpace
+      char '<'
+      path <- many1 (notChar '>')
+      char '>'
+      skipSpace >> char ';'
+      return path
+
+parseFile :: LBS.ByteString -> Either String [TopLevel]
+parseFile src = 
+    let stripped = stripComments src
+    in parseOnly (many1 parseTopLevel) stripped
 
 stripComments :: LBS.ByteString -> LBS.ByteString
 stripComments = go LBS.empty
