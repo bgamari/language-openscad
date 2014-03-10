@@ -30,6 +30,7 @@ ident = do
 data Argument a = Argument a | NamedArgument Ident a
                 deriving (Show)
 
+-- | An OpenSCAD geometry object
 data Object
     = Module Ident [Argument Expr] (Maybe Object)
     | Objects [Object]  -- ^ Implicit union
@@ -39,6 +40,7 @@ data Object
     | DisableMod Object
     deriving (Show)
 
+-- | An OpenSCAD expression
 data Expr
     = EVar Ident
     | ENum Double
@@ -54,6 +56,7 @@ data Expr
     | EParen Expr
     deriving (Show)
 
+-- | A OpenSCAD scope
 data Scad
     = ModuleDef { moduleName :: Ident
                 , moduleArgs :: [(Ident, Maybe Expr)]
