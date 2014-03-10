@@ -61,6 +61,7 @@ data Expr
     | EMinus Expr Expr
     | EMult Expr Expr
     | EDiv Expr Expr
+    | EMod Expr Expr
     | EEquals Expr Expr
     | ENotEquals Expr Expr
     | EGT Expr Expr
@@ -194,6 +195,7 @@ expression = do
            , op "-"  EMinus
            , op "*"  EMult
            , op "/"  EDiv
+           , op "%"  EMod
            , op "==" EEquals
            , op "!=" ENotEquals
            , op ">"  EGT
