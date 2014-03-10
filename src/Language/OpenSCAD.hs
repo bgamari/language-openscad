@@ -299,7 +299,7 @@ parseScad = skipSpace >> scad
     funcDef = do
       withSpaces $ string "function"
       name <- ident <* skipSpace
-      args <- betweenSepBy (char ',') (char ')') (char ')') (withSpaces ident)
+      args <- betweenSepBy (char ',') (char '(') (char ')') (withSpaces ident)
       withSpaces $ char '='
       body <- expression
       skipSpace >> char ';'
