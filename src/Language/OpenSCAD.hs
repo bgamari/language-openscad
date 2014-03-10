@@ -235,12 +235,11 @@ parseTopLevel =
            ]
   where
     fileDirective keyword = do
-      string keyword
-      skipSpace
+      withSpaces $ string keyword
       char '<'
       path <- many1 (notChar '>')
       char '>'
-      skipSpace >> char ';'
+      skipSpace >> option ';' (char ';')
       return path
 
 parseFile :: LBS.ByteString -> Either String [TopLevel]
