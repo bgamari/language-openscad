@@ -58,6 +58,12 @@ data Expr
     | EMinus Expr Expr
     | EMult Expr Expr
     | EDiv Expr Expr
+    | EEquals Expr Expr
+    | ENotEquals Expr Expr
+    | EGT Expr Expr
+    | EGE Expr Expr
+    | ELT Expr Expr
+    | ELE Expr Expr
     | EParen Expr
     deriving (Show)
     
@@ -145,13 +151,19 @@ expression = do
     e1 <- term
     skipSpace
     let op c f = do
-          char c
+          string c
           e2 <- expression
           return $ f e1 e2
-    choice [ op '+' EPlus
-           , op '-' EMinus
-           , op '*' EMult
-           , op '/' EDiv
+    choice [ op "+"  EPlus
+           , op "-"  EMinus
+           , op "*"  EMult
+           , op "/"  EDiv
+           , op "==" EEquals
+           , op "!=" ENotEquals
+           , op ">"  EGT
+           , op ">=" EGE
+           , op "<"  ELT
+           , op "<=" ELE
            , return e1
            ]
 
