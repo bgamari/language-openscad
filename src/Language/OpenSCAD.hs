@@ -253,11 +253,11 @@ stripComments = go LBS.empty
   where
     go accum b | LBS.null b = accum
     go accum b =
-      let (before,after) = LBS.span (/= '/') b
-          after' = case after of
-                c | LBS.null c              -> LBS.empty
+      let (before, after) = LBS.span (/= '/') b
+          (before', after') = case after of
+                c | LBS.null c              -> (before, LBS.empty)
                 c | "/*" `LBS.isPrefixOf` c -> let (_, d) = LBS.breakSubstring "*/" c
-                                               in LBS.drop 2 d
-                c | "//" `LBS.isPrefixOf` c -> LBS.dropWhile (/= '\n') c
-                c                           -> "/" <> c
-      in go (accum <> before) after'
+                                               in (before, LBS.drop 2 d)
+                c | "//" `LBS.isPrefixOf` c -> (before, LBS.dropWhile (/= '\n') c)
+                c                           -> (before<>"/", LBS.drop 1 after)
+      in go (accum <> before') after'
