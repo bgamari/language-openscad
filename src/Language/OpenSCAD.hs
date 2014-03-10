@@ -194,13 +194,18 @@ notIdent parser = do
 keyword :: LBS.ByteString -> Parser ()
 keyword word = void $ notIdent (string word)
 
+postfixOp :: Expr -> Parser Expr
+postfixOp e =
+    choice [ EIndex e <$> between (char '[') (char ']') expression >>= postfixOp
+           , return e
+           ]
+
 expression :: Parser Expr
 expression = do
     skipSpace
     e1 <- term
     skipSpace
-    e1' <- option e1 $ 
-      EIndex e1 <$> between (char '[') (char ']') expression
+    e1' <- postfixOp e1
     skipSpace
       
     let op c f = do
