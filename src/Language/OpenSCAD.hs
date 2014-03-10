@@ -72,6 +72,7 @@ data Expr
     | EGE Expr Expr
     | ELT Expr Expr
     | ELE Expr Expr
+    | ENot Expr
     | EOr Expr Expr
     | EAnd Expr Expr
     | ETernary Expr Expr Expr
@@ -158,6 +159,7 @@ term = choice
     [ funcRef
     , ENum <$> signed double'
     , ENegate <$> (char '-' *> term)
+    , ENot <$> (char '!' *> term)
     , ERange <$> range
     , EVec <$> betweenSepBy (char ',') (char '[') (char ']') (withSpaces expression)
     , EString <$> between (char '"') (char '"') (many $ notChar '"')
