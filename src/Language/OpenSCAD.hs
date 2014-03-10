@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}                
+{-# LANGUAGE OverloadedStrings #-}
 
 module Language.OpenSCAD
     ( Ident(..)
@@ -13,11 +13,13 @@ module Language.OpenSCAD
 
 import Data.Attoparsec.Char8
 import Control.Applicative
-                
--- | An identifier                
+import Data.Monoid ((<>))
+import qualified Data.ByteString.Char8 as LBS
+
+-- | An identifier
 newtype Ident = Ident String
               deriving (Show, Eq, Ord)
-                
+
 ident :: Parser Ident
 ident = do
     c <- satisfy $ inClass "$a-zA-Z_"
@@ -26,7 +28,7 @@ ident = do
 
 data Argument a = Argument a | NamedArgument Ident a
                 deriving (Show)
-     
+
 data Object
     = Module Ident [Argument Expr] (Maybe Object)
     | Objects [Object]  -- ^ Implicit union
@@ -50,7 +52,7 @@ data Expr
     | EDiv Expr Expr
     | EParen Expr
     deriving (Show)
-    
+
 data Scad
     = ModuleDef { moduleName :: Ident
                 , moduleArgs :: [(Ident, Maybe Expr)]
@@ -72,17 +74,17 @@ sepByTill delim end parser = (end *> return []) <|> go []
     go xs = do x <- parser
                let xs' = x:xs
                (end *> return (reverse xs')) <|> (delim >> go xs')
-  
+
 betweenSepBy :: Parser delim -> Parser start -> Parser end -> Parser a -> Parser [a]
 betweenSepBy delim start end parser = start >> sepByTill delim end parser
-  
+
 arguments :: Parser [Argument Expr]
 arguments = list <?> "argument list"
   where
     list = do
       char '('
       sepByTill (char ',') (char ')') (withSpaces $ try namedArg <|> arg)
-      
+
     namedArg = do
       name <- skipSpace >> ident
       withSpaces $ char '='
@@ -109,10 +111,10 @@ term = choice
       skipSpace
       args <- arguments
       return $ EFunc name args
-    
+
 expression :: Parser Expr
 expression = do
-    skipSpace            
+    skipSpace
     e1 <- term
     skipSpace
     let op c f = do
@@ -142,7 +144,7 @@ between start end parser = do
 parseObject :: Parser Object
 parseObject = skipSpace *> object <* skipSpace
   where
-    object = 
+    object =
           (moduleRef <?> "module reference")
       <|> (Objects <$> between (char '{') (char '}') (many parseObject))
       <|> mod '%' BackgroundMod
@@ -157,7 +159,7 @@ parseObject = skipSpace *> object <* skipSpace
         <|> Just <$> parseObject
         <|> (Just <$> between (char '{') (char '}') parseObject)
       return $ Module name args block
-      
+
     mod :: Char -> (Object -> Object) -> Parser Object
     mod c f = do
       withSpaces (char c)
@@ -177,7 +179,7 @@ parseScad = skipSpace >> scad
       args <- withSpaces arguments
       body <- between (char '{') (char '}') $ many parseScad
       return $ ModuleDef name args body
-  
+
     arguments = betweenSepBy (char ',') (char '(') (char ')') $ withSpaces $ do
       name <- withSpaces ident
       value <- optional $ char '=' >> skipSpace >> expression
@@ -189,7 +191,7 @@ parseScad = skipSpace >> scad
       value <- expression
       skipSpace >> char ';'
       return $ VarDef name value
-      
+
     funcDef = do
       withSpaces $ string "function"
       name <- ident <* skipSpace
