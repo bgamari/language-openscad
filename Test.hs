@@ -15,5 +15,5 @@ main = do
     case result of
       Left error
         | length error > 50 -> putStrLn error >> exitWith (ExitFailure 1)
-        | otherwise         -> putStrLn "hi"
+        | otherwise         -> putStrLn $ "warning: "++error
       Right a    -> print a
