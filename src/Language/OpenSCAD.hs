@@ -16,6 +16,7 @@ module Language.OpenSCAD
 
 import Data.Attoparsec.Char8
 import Control.Applicative
+import Control.Monad (guard)
 import Data.List (foldl')
 import Data.Char (ord)
 import Data.Monoid ((<>))
@@ -25,10 +26,13 @@ import qualified Data.ByteString.Char8 as LBS
 newtype Ident = Ident String
               deriving (Show, Eq, Ord)
 
+identChar :: Char -> Bool
+identChar = inClass "a-zA-Z0-9_"
+
 ident :: Parser Ident
 ident = do
     c <- satisfy $ inClass "$a-zA-Z_"
-    rest <- many $ satisfy $ inClass "a-zA-Z0-9_"
+    rest <- many $ satisfy identChar
     return $ Ident (c:rest)
 
 data Argument a = Argument a | NamedArgument Ident a
@@ -157,8 +161,8 @@ term = choice
     , ERange <$> range
     , EVec <$> betweenSepBy (char ',') (char '[') (char ']') (withSpaces expression)
     , EString <$> between (char '"') (char '"') (many $ notChar '"')
-    , EBool <$> choice [ string "true" >> return True
-                       , string "false" >> return False
+    , EBool <$> choice [ keyword "true" >> return True
+                       , keyword "false" >> return False
                        ]
     , EVar <$> ident
     , EParen <$> between (char '(') (char ')') expression
@@ -169,6 +173,12 @@ term = choice
       skipSpace
       args <- arguments
       return $ EFunc name args
+
+keyword :: LBS.ByteString -> Parser ()
+keyword word = do
+  string word
+  next <- peekChar
+  guard $ maybe True (not . identChar) next
 
 expression :: Parser Expr
 expression = do
