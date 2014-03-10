@@ -66,6 +66,8 @@ data Expr
     | EGE Expr Expr
     | ELT Expr Expr
     | ELE Expr Expr
+    | EOr Expr Expr
+    | EAnd Expr Expr
     | ETernary Expr Expr Expr
     | EParen Expr
     deriving (Show)
@@ -192,6 +194,8 @@ expression = do
            , op ">=" EGE
            , op "<"  ELT
            , op "<=" ELE
+           , op "||" EOr
+           , op "&&" EAnd
            , return e1
            ]
 
