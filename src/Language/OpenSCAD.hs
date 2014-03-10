@@ -164,7 +164,7 @@ term = withSpaces $ choice
     , ENot <$> (char '!' *> term)
     , ERange <$> range
     , EVec <$> betweenSepBy (char ',') (char '[') (char ']') (withSpaces expression)
-    , EString <$> between (char '"') (char '"') (many $ notChar '"')
+    , EString <$> string
     , EBool <$> choice [ keyword "true" >> return True
                        , keyword "false" >> return False
                        ]
@@ -177,6 +177,12 @@ term = withSpaces $ choice
       skipSpace
       args <- arguments
       return $ EFunc name args
+    string = do
+      char '"'
+      s <- many $ escapedChar <|> notChar '"'
+      char '"'
+      return s
+    escapedChar = char '\\' >> anyChar
 
 notIdent :: Parser a -> Parser a
 notIdent parser = do
