@@ -49,6 +49,7 @@ data Object
 -- | An OpenSCAD expression
 data Expr
     = EVar Ident
+    | EIndex Expr Expr
     | ENum Double
     | EVec [Expr]
     | ERange (Range Expr)
@@ -177,13 +178,19 @@ expression = do
           string c
           e2 <- expression
           return $ f e1 e2
+
         ternary = do
           char '?'
           e2 <- expression
           withSpaces $ char ':'
           e3 <- expression
           return $ ETernary e1 e2 e3
-    choice [ ternary
+        
+        index = do
+          i <- between (char '[') (char ']') expression
+          return $ EIndex e1 i
+    choice [ index
+           , ternary
            , op "+"  EPlus
            , op "-"  EMinus
            , op "*"  EMult
