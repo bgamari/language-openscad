@@ -174,23 +174,22 @@ expression = do
     skipSpace
     e1 <- term
     skipSpace
+    e1' <- option e1 $ 
+      EIndex e1 <$> between (char '[') (char ']') expression
+    skipSpace
+      
     let op c f = do
           string c
           e2 <- expression
-          return $ f e1 e2
+          return $ f e1' e2
 
         ternary = do
           char '?'
           e2 <- expression
           withSpaces $ char ':'
           e3 <- expression
-          return $ ETernary e1 e2 e3
-        
-        index = do
-          i <- between (char '[') (char ']') expression
-          return $ EIndex e1 i
-    choice [ index
-           , ternary
+          return $ ETernary e1' e2 e3
+    choice [ ternary
            , op "+"  EPlus
            , op "-"  EMinus
            , op "*"  EMult
@@ -203,7 +202,7 @@ expression = do
            , op "<=" ELE
            , op "||" EOr
            , op "&&" EAnd
-           , return e1
+           , return e1'
            ]
 
 comment :: Parser String
