@@ -66,6 +66,7 @@ data Expr
     | EGE Expr Expr
     | ELT Expr Expr
     | ELE Expr Expr
+    | ETernary Expr Expr Expr
     | EParen Expr
     deriving (Show)
     
@@ -174,7 +175,14 @@ expression = do
           string c
           e2 <- expression
           return $ f e1 e2
-    choice [ op "+"  EPlus
+        ternary = do
+          char '?'
+          e2 <- expression
+          withSpaces $ char ':'
+          e3 <- expression
+          return $ ETernary e1 e2 e3
+    choice [ ternary
+           , op "+"  EPlus
            , op "-"  EMinus
            , op "*"  EMult
            , op "/"  EDiv
