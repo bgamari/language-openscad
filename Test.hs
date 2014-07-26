@@ -2,7 +2,6 @@
 
 import Language.OpenSCAD
 import Data.Attoparsec.ByteString.Char8
-import Data.Attoparsec
 import qualified Data.ByteString as BS
 import System.Environment
 import System.Exit
