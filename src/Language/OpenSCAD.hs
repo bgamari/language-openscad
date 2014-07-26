@@ -1,15 +1,19 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Language.OpenSCAD
-    ( Ident(..)
-    , Argument(..)
-    , Expr(..)
-    , ident
-    , Scad(..)
-    , TopLevel(..) 
-    , Range(..)
+    ( -- * Basic parsing
+      stripComments
     , parseFile
-    , stripComments
+      -- * Primitives
+    , Ident(..)
+    , ident
+    , TopLevel(..) 
+    , Scad(..)
+    , Object(..)
+      -- * Expressions
+    , Expr(..)
+    , Argument(..)
+    , Range(..)
     ) where
 
 import Control.Applicative
