@@ -27,13 +27,16 @@ newtype Ident = Ident String
 identChar :: Char -> Bool
 identChar = inClass "a-zA-Z0-9_"
 
+-- | Parse an identifier
 ident :: Parser Ident
 ident = do
     c <- satisfy $ inClass "$a-zA-Z0-9_"
     rest <- many $ satisfy identChar
     return $ Ident (c:rest)
 
-data Argument a = Argument a | NamedArgument Ident a
+-- | An item in an argument list
+data Argument a = Argument a            -- ^ Just a plain value
+                | NamedArgument Ident a -- ^ A named argument
                 deriving (Show)
 
 -- | An OpenSCAD geometry object
@@ -108,6 +111,7 @@ sepByTill delim end parser = (end *> return []) <|> go []
 betweenSepBy :: Parser delim -> Parser start -> Parser end -> Parser a -> Parser [a]
 betweenSepBy delim start end parser = start >> sepByTill delim end parser
 
+-- | Parse an argument list
 arguments :: Parser [Argument Expr]
 arguments = list <?> "argument list"
   where
@@ -122,6 +126,7 @@ arguments = list <?> "argument list"
       return $ NamedArgument name value
     arg = skipSpace >> Argument <$> expression
 
+-- | Parse a range
 range :: Parser (Range Expr)
 range = do
     withSpaces $ char '['
@@ -153,6 +158,7 @@ double' = notIdent $ do
       d <- digit
       return $ ord d - ord '0'
 
+-- | Parse a term of an expression
 term :: Parser Expr
 term = withSpaces $ choice
     [ funcRef
@@ -198,6 +204,7 @@ postfixOp e =
            , return e
            ]
 
+-- | Parse an expression
 expression :: Parser Expr
 expression = do
     skipSpace
@@ -234,12 +241,14 @@ expression = do
            , return e1'
            ]
 
+-- | Parse a comment
 comment :: Parser String
 comment = (singleLine <|> multiLine) <?> "comment"
   where
     singleLine = skipSpace *> string "//" *> manyTill' anyChar (char '\n')
     multiLine  = skipSpace *> string "/*" *> manyTill' anyChar (string "*/")
 
+-- | Parse the given parser bracketed by opening and closing parsers
 between :: Parser open -> Parser close -> Parser a -> Parser a
 between start end parser = do
     start
@@ -247,6 +256,7 @@ between start end parser = do
     end
     return p
 
+-- | Parse a block of OpenSCAD statements
 block :: Parser a -> Parser [a]
 block parser = do
     xs <- between (char '{' >> skipSpace) (char '}') (many parser)
@@ -254,6 +264,7 @@ block parser = do
     optional (char ';')
     return xs
 
+-- | Parse an OpenSCAD object
 object :: Parser Object
 object = withSpaces $ choice
     [ forLoop     <?> "for loop"
@@ -300,6 +311,7 @@ object = withSpaces $ choice
 singleton :: a -> [a]
 singleton x = [x]
 
+-- | Parse an OpenSCAD scope
 scad :: Parser Scad
 scad = skipSpace >> scad
   where
@@ -347,6 +359,7 @@ data TopLevel = TopLevelScope Scad
               | IncludeDirective String
               deriving (Show)
 
+-- | Parse the top-level definitions of an OpenSCAD source file
 topLevel :: Parser TopLevel
 topLevel =
     choice [ TopLevelScope <$> scad
@@ -362,6 +375,7 @@ topLevel =
       skipSpace >> optional (char ';')
       return path
 
+-- | Parse an OpenSCAD source file
 parseFile :: LBS.ByteString -> Either String [TopLevel]
 parseFile src = 
     go $ parse (many1 topLevel) (stripComments src)
@@ -373,6 +387,7 @@ parseFile src =
       | otherwise            = Left $ "Remaining: " ++ show rem
     strip = LBS.filter (not . isSpace)
 
+-- | Strip the comments from and OpenSCAD source file
 stripComments :: LBS.ByteString -> LBS.ByteString
 stripComments = go LBS.empty
   where
