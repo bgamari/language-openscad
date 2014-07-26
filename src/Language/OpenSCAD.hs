@@ -76,9 +76,9 @@ data Expr
     | EParen Expr
     deriving (Show)
     
-data Range a = Range a          -- ^ start
-                     a          -- ^ end
-                     (Maybe a)  -- ^ step
+-- | @Range start end step@ denotes a list starting at @start@ and
+-- stopping at @end@ with increments of @step@.
+data Range a = Range a a (Maybe a)
              deriving (Show)
 
 -- | A OpenSCAD scope
