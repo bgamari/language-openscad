@@ -11,12 +11,12 @@ module Language.OpenSCAD
     , stripComments
     ) where
 
-import Data.Attoparsec.Char8
 import Control.Applicative
 import Control.Monad (guard, void)
 import Data.List (foldl')
 import Data.Char (ord)
 import Data.Monoid ((<>))
+import Data.Attoparsec.ByteString.Char8
 import qualified Data.ByteString.Char8 as LBS
 
 -- | An identifier

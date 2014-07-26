@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}                
 
 import Language.OpenSCAD
-import Data.Attoparsec.Char8
+import Data.Attoparsec.ByteString.Char8
 import Data.Attoparsec
 import qualified Data.ByteString as BS
 import System.Environment
