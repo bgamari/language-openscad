@@ -7,6 +7,7 @@ module Language.OpenSCAD
     , ident
     , Scad(..)
     , TopLevel(..) 
+    , Range(..)
     , parseFile
     , stripComments
     ) where
