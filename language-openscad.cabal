@@ -1,5 +1,6 @@
 name:                language-openscad
 version:             0.1.7
+x-revision:          1
 synopsis:            A simple parser for OpenSCAD
 description:         A simple parser for OpenSCAD
 homepage:            http://www.github.com/bgamari/language-openscad
