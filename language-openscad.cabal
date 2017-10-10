@@ -7,7 +7,7 @@ homepage:            http://www.github.com/bgamari/language-openscad
 license:             BSD3
 license-file:        LICENSE
 author:              Ben Gamari
-maintainer:          bgamari@gmail.com>
+maintainer:          bgamari@gmail.com
 copyright:           (c) 2014 Ben Gamari
 category:            Language
 build-type:          Simple
