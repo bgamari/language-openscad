@@ -1,18 +1,16 @@
-{-# LANGUAGE OverloadedStrings #-}                
+{-# LANGUAGE OverloadedStrings #-}
 
 import Language.OpenSCAD
-import Data.Attoparsec.ByteString.Char8
 import qualified Data.ByteString as BS
 import System.Environment
 import System.Exit
-import System.IO
-       
+
+main :: IO ()
 main = do
     file <- head `fmap` getArgs
-    example <- BS.readFile file
-    let result = parseFile example
+    result <- parse <$> BS.readFile file
     case result of
-      Left error
-        | length error > 50 -> putStrLn error >> exitWith (ExitFailure 1)
-        | otherwise         -> putStrLn $ "warning: "++error
+      Left err
+        | length err > 50 -> putStrLn err >> exitWith (ExitFailure 1)
+        | otherwise       -> putStrLn $ "warning: "++err
       Right a    -> print a

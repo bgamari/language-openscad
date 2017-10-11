@@ -1,13 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Language.OpenSCAD
     ( -- * Basic parsing
-      stripComments
-    , parseFile
+      parse
       -- * Primitives
     , Ident(..)
     , ident
-    , TopLevel(..) 
+    , TopLevel(..)
     , Scad(..)
     , Object(..)
       -- * Expressions
@@ -17,25 +17,30 @@ module Language.OpenSCAD
     ) where
 
 import Control.Applicative
-import Control.Monad (guard, void)
+import Control.Monad (void)
 import Data.List (foldl')
-import Data.Char (ord)
+import Data.Char (ord, digitToInt)
+import qualified Data.Scientific as Sci
+import qualified Data.CharSet as CS
+import qualified Data.CharSet.Unicode as CS
 import Data.Monoid ((<>))
-import Data.Attoparsec.ByteString.Char8
-import qualified Data.ByteString.Char8 as LBS
+import Text.Trifecta hiding (ident)
+import Text.Parser.Expression
+import qualified Data.ByteString.Char8 as BS
+import Text.Parser.Token.Style (emptyOps)
 
 -- | An identifier
 newtype Ident = Ident String
               deriving (Show, Eq, Ord)
 
-identChar :: Char -> Bool
-identChar = inClass "a-zA-Z0-9_"
+identChars :: CS.CharSet
+identChars = CS.letter <> CS.decimalNumber <> CS.fromList "_"
 
 -- | Parse an identifier
 ident :: Parser Ident
-ident = do
-    c <- satisfy $ inClass "$a-zA-Z0-9_"
-    rest <- many $ satisfy identChar
+ident = token $ do
+    c <- oneOfSet $ CS.fromList "$_" <> CS.letter
+    rest <- many $ oneOfSet identChars
     return $ Ident (c:rest)
 
 -- | An item in an argument list
@@ -83,7 +88,7 @@ data Expr
     | ETernary Expr Expr Expr
     | EParen Expr
     deriving (Show)
-    
+
 -- | @Range start end step@ denotes a list starting at @start@ and
 -- stopping at @end@ with increments of @step@.
 data Range a = Range a a (Maybe a)
@@ -115,162 +120,154 @@ sepByTill delim end parser = (end *> return []) <|> go []
 betweenSepBy :: Parser delim -> Parser start -> Parser end -> Parser a -> Parser [a]
 betweenSepBy delim start end parser = start >> sepByTill delim end parser
 
+equals :: Parser Char
+equals = symbolic '='
+
 -- | Parse an argument list
 arguments :: Parser [Argument Expr]
 arguments = list <?> "argument list"
   where
-    list = do
-      char '('
-      sepByTill (char ',') (char ')') (withSpaces $ try namedArg <|> arg)
+    list = parens $ commaSep $ try namedArg <|> arg
 
     namedArg = do
-      name <- skipSpace >> ident
-      withSpaces $ char '='
+      name <- ident
+      equals
       value <- expression
       return $ NamedArgument name value
-    arg = skipSpace >> Argument <$> expression
+    arg = spaces >> Argument <$> expression
 
 -- | Parse a range
 range :: Parser (Range Expr)
-range = do
-    withSpaces $ char '['
+range = brackets $ do
     start <- expression
-    withSpaces $ char ':'
+    colon
     stop <- expression
     step <- option Nothing $ do
-        withSpaces $ char ':'
+        colon
         Just <$> expression
-    withSpaces $ char ']'
     return $ Range start stop step
 
--- | Accept decimals without leading zero
+-- | Accept decimals, including fractional values lacking a zero to the left of
+-- the decimal point.
 double' :: Parser Double
-double' = notIdent $ do
-    choice [ double
-           , char '-' >> go negate
-           , char '+' >> go id
-           , go id
+double' = notIdent $
+    choice [ try $ do
+                 s <- sign
+                 n <- decimal
+                 f <- try fractExponent <|> (fromInteger <$ char '.') <|> pure fromInteger
+                 return $ realToFrac $ s $ f n
+           , do s <- sign
+                realToFrac . s . ($ 0) <$> fractExponent
            ]
-  where
-    go f = do
-      char '.'
-      digits <- reverse <$> many digitOrd
-      exp <- option 0 $ char 'e' >> signed decimal
-      let n = foldl' (+) 0 $ zipWith (*) [10^i | i <- [0..]] digits
-      return $ f $ realToFrac n / realToFrac (10^(length digits + exp))
-    digitOrd = do
-      d <- digit
-      return $ ord d - ord '0'
+
+fractExponent :: forall m. TokenParsing m => m (Integer -> Sci.Scientific)
+fractExponent = (\fract expo n -> (fromInteger n + fract) * expo) <$> fraction <*> option 1 exponent'
+            <|> (\expo n -> fromInteger n * expo) <$> exponent'
+ where
+  fraction :: m Sci.Scientific
+  fraction = foldl' op 0 <$> (char '.' *> (some digit <?> "fraction"))
+
+  op f d = f + Sci.scientific (fromIntegral (digitToInt d)) (Sci.base10Exponent f - 1)
+
+  exponent' :: m Sci.Scientific
+  exponent' = ((\f e -> power (f e)) <$ oneOf "eE" <*> sign <*> (decimal <?> "exponent")) <?> "exponent"
+
+  power = Sci.scientific 1 . fromInteger
+
+sign :: (Num a, TokenParsing m) => m (a -> a)
+sign =
+      negate <$ char '-'
+  <|> id <$ char '+'
+  <|> pure id
 
 -- | Parse a term of an expression
 term :: Parser Expr
-term = withSpaces $ choice
-    [ funcRef
-    , ENum <$> signed double'
-    , ENegate <$> (char '-' *> term)
-    , char '+' *> term
-    , ENot <$> (char '!' *> term)
+term = choice
+    [ try funcRef
+    , ENum <$> double'
     , ERange <$> range
-    , EVec <$> betweenSepBy (char ',') (char '[') (char ']') (withSpaces expression)
-    , EString <$> string
+    , EVec <$> brackets (commaSep expression)
+    , EString <$> stringLit
     , EBool <$> choice [ keyword "true" >> return True
                        , keyword "false" >> return False
                        ]
     , EVar <$> ident
-    , EParen <$> between (char '(') (char ')') expression
+    , EParen <$> parens expression
     ]
   where
     funcRef = do
       name <- ident
-      skipSpace
       args <- arguments
       return $ EFunc name args
-    string = do
-      char '"'
-      s <- many $ escapedChar <|> notChar '"'
-      char '"'
-      return s
+    stringLit = between (char '"') (char '"') $
+      many $ escapedChar <|> notChar '"'
     escapedChar = char '\\' >> anyChar
 
 notIdent :: Parser a -> Parser a
 notIdent parser = do
     x <- parser
-    next <- peekChar
-    guard $ maybe True (not . identChar) next
+    notFollowedBy $ oneOfSet identChars
     return x
 
-keyword :: LBS.ByteString -> Parser ()
-keyword word = void $ notIdent (string word)
-
-postfixOp :: Expr -> Parser Expr
-postfixOp e =
-    choice [ EIndex e <$> between (char '[') (char ']') expression >>= postfixOp
-           , return e
-           ]
+keyword :: String -> Parser ()
+keyword word = void $ notIdent (symbol word)
 
 -- | Parse an expression
 expression :: Parser Expr
-expression = do
-    skipSpace
-    e1 <- term
-    skipSpace
-    e1' <- postfixOp e1
-    skipSpace
-      
-    let op c f = do
-          string c
-          e2 <- expression
-          return $ f e1' e2
-
-        ternary = do
-          char '?'
-          e2 <- expression
-          withSpaces $ char ':'
-          e3 <- expression
-          return $ ETernary e1' e2 e3
-    choice [ ternary
-           , op "+"  EPlus
-           , op "-"  EMinus
-           , op "*"  EMult
-           , op "/"  EDiv
-           , op "%"  EMod
-           , op "==" EEquals
-           , op "!=" ENotEquals
-           , op ">"  EGT
-           , op ">=" EGE
-           , op "<"  ELT
-           , op "<=" ELE
-           , op "||" EOr
-           , op "&&" EAnd
-           , return e1'
+expression =
+    choice [ try ternary
+           , try $ do
+                 e <- term
+                 EIndex e <$> brackets expression
+           , buildExpressionParser opTable term
            ]
+    <?> "expression"
+  where
+    ternary = do
+        e1 <- term
+        symbolic '?'
+        e2 <- expression
+        colon
+        e3 <- expression
+        return $ ETernary e1 e2 e3
+
+opTable :: [[Operator Parser Expr]]
+opTable =
+    [ [ prefix "-" ENegate, prefix "+" id, prefix "!" ENot ]
+    , [ binary "*" EMult AssocLeft, binary "/" EDiv AssocLeft, binary "%" EMod AssocLeft ]
+    , [ binary "+" EPlus AssocLeft, binary "-" EMinus AssocLeft ]
+    , [ binary "==" EEquals AssocLeft
+      , binary "!=" ENotEquals AssocLeft
+      , binary ">"  EGT AssocLeft
+      , binary ">=" EGE AssocLeft
+      , binary "<"  ELT AssocLeft
+      , binary "<=" ELE AssocLeft
+      ]
+    , [ binary "||" EOr AssocLeft, binary "&&" EAnd AssocLeft ]
+    ]
+  where
+    binary  name fun assoc = Infix (fun <$ reservedOp name) assoc
+    prefix  name fun       = Prefix (fun <$ reservedOp name)
+    reservedOp name = reserve emptyOps name
 
 -- | Parse a comment
 comment :: Parser String
 comment = (singleLine <|> multiLine) <?> "comment"
   where
-    singleLine = skipSpace *> string "//" *> manyTill' anyChar (char '\n')
-    multiLine  = skipSpace *> string "/*" *> manyTill' anyChar (string "*/")
-
--- | Parse the given parser bracketed by opening and closing parsers
-between :: Parser open -> Parser close -> Parser a -> Parser a
-between start end parser = do
-    start
-    p <- parser
-    end
-    return p
+    singleLine = spaces *> string "//" *> manyTill anyChar (char '\n')
+    multiLine  = spaces *> string "/*" *> manyTill anyChar (string "*/")
 
 -- | Parse a block of OpenSCAD statements
 block :: Parser a -> Parser [a]
 block parser = do
-    xs <- between (char '{' >> skipSpace) (char '}') (many parser)
-    skipSpace
-    optional (char ';')
+    xs <- between (char '{' >> spaces) (char '}') (many parser)
+    spaces
+    optional semi
     return xs
 
 -- | Parse an OpenSCAD object
 object :: Parser Object
-object = withSpaces $ choice
+object = choice
     [ forLoop     <?> "for loop"
     , conditional <?> "if statement"
     , moduleRef   <?> "module reference"
@@ -282,34 +279,31 @@ object = withSpaces $ choice
     ]
   where
     moduleRef = do
-      name <- withSpaces ident
+      name <- ident
       args <- arguments
-      skipSpace
-      block <- (char ';' >> return Nothing) <|> Just <$> object
+      spaces
+      block <- (semi >> return Nothing) <|> Just <$> object
       return $ Module name args block
 
     forLoop = do
-      withSpaces $ string "for"
-      char '('
-      var <- ident
-      withSpaces $ char '='
-      range <- expression 
-      char ')'
+      symbol "for"
+      (var, range) <- parens $
+          ((,) <$> ident <* equals <*> expression)
       body <- object
       return $ ForLoop var range body
 
     conditional = do
-      withSpaces $ string "if"
-      e <- between (char '(') (char ')') expression
+      symbol "if"
+      e <- parens expression
       _then <- object
       _else <- optional $ do
-        withSpaces $ string "else"
+        symbol "else"
         object
       return $ If e _then _else
-      
+
     mod :: Char -> (Object -> Object) -> Parser Object
     mod c f = do
-      withSpaces (char c)
+      symbolic c
       f <$> object
 
 singleton :: a -> [a]
@@ -317,47 +311,44 @@ singleton x = [x]
 
 -- | Parse an OpenSCAD scope
 scad :: Parser Scad
-scad = skipSpace >> scad
+scad = spaces >> scad
   where
     scad = choice [ moduleDef                <?> "module definition"
-                  , varDef                   <?> "variable definition"
                   , funcDef                  <?> "function definition"
+                  , varDef                   <?> "variable definition"
                   , (Object <$> object)      <?> "object"
                   ]
     moduleDef = do
-      withSpaces $ string "module"
+      symbol "module"
       name <- ident
-      args <- withSpaces arguments
+      args <- arguments
       body <- choice [ singleton <$> scad
-                     , between (char '{') (char '}') $ many scad
+                     , braces $ many scad
                      ]
       return $ ModuleDef name args body
 
-    arguments = betweenSepBy (char ',') (char '(') (char ')') $ withSpaces $ do
-      name <- withSpaces ident
-      value <- optional $ char '=' >> skipSpace >> expression
+    arguments = parens $ commaSep $ do
+      name <- ident
+      value <- optional $ equals >> expression
       return (name, value)
 
     varDef = do
-      name <- skipSpace *> ident
-      withSpaces $ char '='
+      name <- ident
+      equals
       value <- expression
-      skipSpace >> char ';'
+      semi
       return $ VarDef name value
 
     funcDef = do
-      withSpaces $ string "function"
-      name <- ident <* skipSpace
-      args <- betweenSepBy (char ',') (char '(') (char ')') (withSpaces ident)
-      withSpaces $ char '='
+      symbol "function"
+      name <- ident <* spaces
+      args <- parens $ commaSep ident
+      equals
       body <- expression
-      skipSpace >> char ';'
+      semi
       return $ FuncDef name args body
 
-withSpaces :: Parser a -> Parser a
-withSpaces parser = skipSpace *> parser <* skipSpace
-
--- | Things which can appear at the top level of an OpenSCAD source file           
+-- | Things which can appear at the top level of an OpenSCAD source file
 data TopLevel = TopLevelScope Scad
               | UseDirective String
               | IncludeDirective String
@@ -372,36 +363,36 @@ topLevel =
            ]
   where
     fileDirective keyword = do
-      withSpaces $ string keyword
-      char '<'
-      path <- many1 (notChar '>')
-      char '>'
-      skipSpace >> optional (char ';')
+      textSymbol keyword
+      path <- angles $ some (notChar '>')
+      optional semi
       return path
 
--- | Parse an OpenSCAD source file
-parseFile :: LBS.ByteString -> Either String [TopLevel]
-parseFile src = 
-    go $ parse (many1 topLevel) (stripComments src)
-  where
-    go (Fail rem ctxs err) = Left $ err ++ ": " ++ show ctxs
-    go (Partial feed)      = go $ feed LBS.empty
-    go (Done rem r)
-      | LBS.null (strip rem) = Right r
-      | otherwise            = Left $ "Remaining: " ++ show rem
-    strip = LBS.filter (not . isSpace)
+-- not currently safe due to need to strip comments
+parseFile :: FilePath -> IO (Either String [TopLevel])
+parseFile = fmap resultToEither . parseFromFileEx (some topLevel)
 
--- | Strip the comments from and OpenSCAD source file
-stripComments :: LBS.ByteString -> LBS.ByteString
-stripComments = go LBS.empty
+-- | Parse OpenSCAD source
+parse :: BS.ByteString -> Either String [TopLevel]
+parse =
+    resultToEither . parseByteString (some topLevel) mempty . stripComments
+
+resultToEither :: Result a -> Either String a
+resultToEither (Failure err) = Left $ show err
+resultToEither (Success r)   = Right r
+
+-- | Strip the comments from an OpenSCAD source file.
+stripComments :: BS.ByteString -> BS.ByteString
+stripComments = go BS.empty
   where
-    go accum b | LBS.null b = accum
+    -- TODO: This is terribly inefficient
+    go accum b | BS.null b = accum
     go accum b =
-      let (before, after) = LBS.span (/= '/') b
+      let (before, after) = BS.span (/= '/') b
           (before', after') = case after of
-                c | LBS.null c              -> (before, LBS.empty)
-                c | "/*" `LBS.isPrefixOf` c -> let (_, d) = LBS.breakSubstring "*/" c
-                                               in (before, LBS.drop 2 d)
-                c | "//" `LBS.isPrefixOf` c -> (before, LBS.dropWhile (/= '\n') c)
-                c                           -> (before<>"/", LBS.drop 1 after)
+                c | BS.null c              -> (before, BS.empty)
+                  | "/*" `BS.isPrefixOf` c -> let (_, d) = BS.breakSubstring "*/" c
+                                              in (before, BS.drop 2 d)
+                  | "//" `BS.isPrefixOf` c -> (before, BS.dropWhile (/= '\n') c)
+                  | otherwise              -> (before<>"/", BS.drop 1 after)
       in go (accum <> before') after'
