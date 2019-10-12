@@ -8,7 +8,6 @@ module Language.OpenSCAD
     , Ident(..)
     , ident
     , TopLevel(..)
-    , Scad(..)
     , Object(..)
       -- * Expressions
     , Expr(..)
@@ -18,8 +17,9 @@ module Language.OpenSCAD
 
 import Control.Applicative
 import Control.Monad (void)
-import Data.List (foldl')
 import Data.Char (ord, digitToInt)
+import Data.List (foldl')
+import Data.Maybe
 import qualified Data.Scientific as Sci
 import qualified Data.CharSet as CS
 import qualified Data.CharSet.Unicode as CS
@@ -58,6 +58,17 @@ data Object
     | DebugMod Object
     | RootMod Object
     | DisableMod Object
+    | ModuleDef { moduleName :: Ident
+                , moduleArgs :: [(Ident, Maybe Expr)]
+                , moduleBody :: [Object]
+                }
+    | VarDef { varName       :: Ident
+             , varValue      :: Expr
+             }
+    | FuncDef { funcName     :: Ident
+              , funcArgs     :: [Ident]
+              , funcBody     :: Expr
+              }
     deriving (Show)
 
 -- | An OpenSCAD expression
@@ -94,21 +105,6 @@ data Expr
 data Range a = Range a a (Maybe a)
              deriving (Show)
 
--- | A OpenSCAD scope
-data Scad
-    = ModuleDef { moduleName :: Ident
-                , moduleArgs :: [(Ident, Maybe Expr)]
-                , moduleBody :: [Scad]
-                }
-    | VarDef { varName       :: Ident
-             , varValue      :: Expr
-             }
-    | FuncDef { funcName     :: Ident
-              , funcArgs     :: [Ident]
-              , funcBody     :: Expr
-              }
-    | Object Object
-    deriving (Show)
 
 sepByTill :: Parser delim -> Parser end -> Parser a -> Parser [a]
 sepByTill delim end parser = (end *> return []) <|> go []
@@ -182,10 +178,11 @@ sign =
 
 -- | Parse a term of an expression
 term :: Parser Expr
-term = choice
+term = do
+  e <- choice
     [ try funcRef
     , ENum <$> double'
-    , ERange <$> range
+    , ERange <$> try range
     , EVec <$> brackets (commaSep expression)
     , EString <$> stringLit
     , EBool <$> choice [ keyword "true" >> return True
@@ -194,6 +191,8 @@ term = choice
     , EVar <$> ident
     , EParen <$> parens expression
     ]
+  idx <- optional $ brackets expression <?> "index expression"
+  return $ maybe e (e `EIndex`) idx
   where
     funcRef = do
       name <- ident
@@ -216,9 +215,6 @@ keyword word = void $ notIdent (symbol word)
 expression :: Parser Expr
 expression =
     choice [ try ternary
-           , try $ do
-                 e <- term
-                 EIndex e <$> brackets expression
            , buildExpressionParser opTable term
            ]
     <?> "expression"
@@ -267,9 +263,12 @@ block parser = do
 
 -- | Parse an OpenSCAD object
 object :: Parser Object
-object = choice
+object = spaces >> choice
     [ forLoop     <?> "for loop"
     , conditional <?> "if statement"
+    , moduleDef   <?> "module definition"
+    , funcDef     <?> "function definition"
+    , try varDef  <?> "variable definition"
     , moduleRef   <?> "module reference"
     , Objects <$> block object
     , mod '%' BackgroundMod
@@ -282,7 +281,7 @@ object = choice
       name <- ident
       args <- arguments
       spaces
-      block <- (semi >> return Nothing) <|> Just <$> object
+      block <- (semi >> return Nothing) <|> fmap Just object
       return $ Module name args block
 
     forLoop = do
@@ -306,31 +305,19 @@ object = choice
       symbolic c
       f <$> object
 
-singleton :: a -> [a]
-singleton x = [x]
-
--- | Parse an OpenSCAD scope
-scad :: Parser Scad
-scad = spaces >> scad
-  where
-    scad = choice [ moduleDef                <?> "module definition"
-                  , funcDef                  <?> "function definition"
-                  , varDef                   <?> "variable definition"
-                  , (Object <$> object)      <?> "object"
-                  ]
     moduleDef = do
       symbol "module"
       name <- ident
       args <- arguments
-      body <- choice [ braces $ many scad
-                     , singleton <$> scad
+      body <- choice [ braces $ many object
+                     , singleton <$> object
                      ]
       return $ ModuleDef name args body
-
-    arguments = parens $ commaSep $ do
-      name <- ident
-      value <- optional $ equals >> expression
-      return (name, value)
+      where
+        arguments = parens $ commaSep $ do
+          name <- ident
+          value <- optional $ equals >> expression
+          return (name, value)
 
     varDef = do
       name <- ident
@@ -349,7 +336,7 @@ scad = spaces >> scad
       return $ FuncDef name args body
 
 -- | Things which can appear at the top level of an OpenSCAD source file
-data TopLevel = TopLevelScope Scad
+data TopLevel = TopLevelScope Object
               | UseDirective String
               | IncludeDirective String
               deriving (Show)
@@ -359,7 +346,7 @@ topLevel :: Parser TopLevel
 topLevel =
     choice [ UseDirective <$> fileDirective "use"
            , IncludeDirective <$> fileDirective "include"
-           , TopLevelScope <$> scad
+           , TopLevelScope <$> object
            ]
   where
     fileDirective keyword = do
@@ -397,3 +384,7 @@ stripComments = go BS.empty
                   | "//" `BS.isPrefixOf` c -> (before, BS.dropWhile (/= '\n') c)
                   | otherwise              -> (before<>"/", BS.drop 1 after)
       in go (accum <> before') after'
+
+singleton :: a -> [a]
+singleton x = [x]
+
