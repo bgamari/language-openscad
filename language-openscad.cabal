@@ -20,8 +20,8 @@ source-repository head
 library
   exposed-modules:     Language.OpenSCAD
   other-extensions:    OverloadedStrings
-  build-depends:       base >=4.6 && <4.11,
-                       trifecta >= 1.7 && < 1.8,
+  build-depends:       base >=4.6 && <4.13,
+                       trifecta >= 2.0 && < 2.2,
                        charset >= 0.3 && < 0.4,
                        parsers >= 0.12 && <0.13,
                        scientific >= 0.3,
