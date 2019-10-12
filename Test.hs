@@ -2,15 +2,28 @@
 
 import Language.OpenSCAD
 import qualified Data.ByteString as BS
-import System.Environment
-import System.Exit
+import qualified Data.Text as T
+import System.FilePath
+import Test.Tasty
+import Test.Tasty.Silver
 
 main :: IO ()
 main = do
-    file <- head `fmap` getArgs
+    testTree <- getTests
+    defaultMain testTree
+
+getTests :: IO TestTree
+getTests = do
+    cases <- findByExtension [".scad"] "tests"
+    return $ testGroup "golden tests"
+        [ goldenVsAction base (file <.> "parsed") (dumpScad file) T.pack
+        | file <- cases
+        , let base = takeBaseName file
+        ]
+
+dumpScad :: FilePath -> IO String
+dumpScad file = do
     result <- parse <$> BS.readFile file
     case result of
-      Left err
-        | length err > 50 -> putStrLn err >> exitWith (ExitFailure 1)
-        | otherwise       -> putStrLn $ "warning: "++err
-      Right a    -> print a
+      Left err -> fail err
+      Right a  -> return $ show a

@@ -29,11 +29,16 @@ library
   hs-source-dirs:      src
   default-language:    Haskell2010
 
-executable test-parse-openscad
+test-suite test-parse-openscad
+  type:                exitcode-stdio-1.0
   main-is:             Test.hs
   build-depends:       base,
                        attoparsec,
                        bytestring,
+                       filepath,
+                       text,
+                       tasty,
+                       tasty-silver,
                        language-openscad
   default-language:    Haskell2010
 
