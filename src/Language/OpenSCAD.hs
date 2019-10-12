@@ -322,8 +322,8 @@ scad = spaces >> scad
       symbol "module"
       name <- ident
       args <- arguments
-      body <- choice [ singleton <$> scad
-                     , braces $ many scad
+      body <- choice [ braces $ many scad
+                     , singleton <$> scad
                      ]
       return $ ModuleDef name args body
 
