@@ -119,15 +119,14 @@ betweenSepBy delim start end parser = start >> sepByTill delim end parser
 equals :: Parser Char
 equals = symbolic '='
 
--- | Parse an argument list
-arguments :: Parser [Argument Expr]
-arguments = list <?> "argument list"
+-- | Parse a module reference argument list
+refArguments :: Parser [Argument Expr]
+refArguments = list <?> "argument list"
   where
-    list = parens $ commaSep $ try namedArg <|> arg
+    list = parens $ commaSep $ namedArg <|> arg
 
     namedArg = do
-      name <- ident
-      equals
+      name <- try $ ident <* equals
       value <- expression
       return $ NamedArgument name value
     arg = spaces >> Argument <$> expression
@@ -181,7 +180,6 @@ term :: Parser Expr
 term = do
   e <- choice
     [ try funcRef
-    , ENum <$> double'
     , ERange <$> try range
     , EVec <$> brackets (commaSep expression)
     , EString <$> stringLit
@@ -189,14 +187,16 @@ term = do
                        , keyword "false" >> return False
                        ]
     , EVar <$> ident
+    , ENum <$> double'
     , EParen <$> parens expression
     ]
   idx <- optional $ brackets expression <?> "index expression"
+  spaces
   return $ maybe e (e `EIndex`) idx
   where
     funcRef = do
       name <- ident
-      args <- arguments
+      args <- refArguments
       return $ EFunc name args
     stringLit = between (char '"') (char '"') $
       many $ escapedChar <|> notChar '"'
@@ -279,7 +279,7 @@ object = spaces >> choice
   where
     moduleRef = do
       name <- ident
-      args <- arguments
+      args <- refArguments
       spaces
       block <- (semi >> return Nothing) <|> fmap Just object
       return $ Module name args block
