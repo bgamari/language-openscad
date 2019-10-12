@@ -357,13 +357,14 @@ data TopLevel = TopLevelScope Scad
 -- | Parse the top-level definitions of an OpenSCAD source file
 topLevel :: Parser TopLevel
 topLevel =
-    choice [ TopLevelScope <$> scad
-           , UseDirective <$> fileDirective "use"
+    choice [ UseDirective <$> fileDirective "use"
            , IncludeDirective <$> fileDirective "include"
+           , TopLevelScope <$> scad
            ]
   where
     fileDirective keyword = do
-      textSymbol keyword
+      spaces
+      symbol keyword
       path <- angles $ some (notChar '>')
       optional semi
       return path
