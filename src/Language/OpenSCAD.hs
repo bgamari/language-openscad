@@ -248,10 +248,12 @@ opTable =
 
 -- | Parse a comment
 comment :: Parser String
-comment = (singleLine <|> multiLine) <?> "comment"
+comment = do
+    spaces
+    (singleLine <|> multiLine) <?> "comment"
   where
-    singleLine = spaces *> string "//" *> manyTill anyChar (char '\n')
-    multiLine  = spaces *> string "/*" *> manyTill anyChar (string "*/")
+    singleLine = string "//" *> manyTill anyChar (char '\n')
+    multiLine  = string "/*" *> manyTill anyChar (string "*/")
 
 -- | Parse a block of OpenSCAD statements
 block :: Parser a -> Parser [a]
@@ -343,14 +345,14 @@ data TopLevel = TopLevelScope Object
 
 -- | Parse the top-level definitions of an OpenSCAD source file
 topLevel :: Parser TopLevel
-topLevel =
+topLevel = do
+    spaces
     choice [ UseDirective <$> fileDirective "use"
            , IncludeDirective <$> fileDirective "include"
            , TopLevelScope <$> object
            ]
   where
     fileDirective keyword = try $ do
-      spaces
       symbol keyword
       path <- angles $ some (notChar '>')
       optional semi
