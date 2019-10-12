@@ -1,0 +1,5 @@
+[ UseDirective "hello.scad"
+, UseDirective "hello.scad"
+, IncludeDirective "hello.scad"
+, TopLevelScope (Module (Ident "hello") [] Nothing)
+]

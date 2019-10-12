@@ -1,0 +1,5 @@
+[ TopLevelScope
+    ModuleDef
+      { moduleName = Ident "hello" , moduleArgs = [] , moduleBody = [] }
+, TopLevelScope (Module (Ident "hello") [] Nothing)
+]

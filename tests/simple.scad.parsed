@@ -1,0 +1,40 @@
+[ TopLevelScope
+    ModuleDef
+      { moduleName = Ident "test_implicit_block"
+      , moduleArgs =
+          [ ( Ident "y" , Nothing ) , ( Ident "x" , Just (ENum 1.0) ) ]
+      , moduleBody =
+          [ Module
+              (Ident "circle") [ NamedArgument (Ident "r") (ENum 1.0) ] Nothing
+          , Module
+              (Ident "cube")
+              [ Argument (EVec [ ENum 1.0 , ENum 2.0 , ENum 3.0 ]) ]
+              Nothing
+          ]
+      }
+, TopLevelScope
+    ModuleDef
+      { moduleName = Ident "test_block"
+      , moduleArgs =
+          [ ( Ident "y" , Nothing ) , ( Ident "x" , Just (ENum 1.0) ) ]
+      , moduleBody =
+          [ Module
+              (Ident "difference")
+              [ Argument (EVar (Ident "x")) ]
+              (Just
+                 (Objects
+                    [ Module
+                        (Ident "circle") [ NamedArgument (Ident "r") (ENum 1.0) ] Nothing
+                    , Module
+                        (Ident "cube")
+                        [ Argument (EVec [ ENum 1.0 , ENum 2.0 , ENum 3.0 ]) ]
+                        Nothing
+                    ]))
+          ]
+      }
+, TopLevelScope
+    (Module
+       (Ident "test_block")
+       [ Argument (ENum 2.0) , Argument (ENum 3.0) ]
+       Nothing)
+]

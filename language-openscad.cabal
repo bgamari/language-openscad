@@ -36,6 +36,7 @@ test-suite test-parse-openscad
                        attoparsec,
                        bytestring,
                        filepath,
+                       pretty-show,
                        text,
                        tasty,
                        tasty-silver,

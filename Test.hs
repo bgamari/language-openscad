@@ -6,6 +6,7 @@ import qualified Data.Text as T
 import System.FilePath
 import Test.Tasty
 import Test.Tasty.Silver
+import Text.Show.Pretty
 
 main :: IO ()
 main = do
@@ -26,4 +27,4 @@ dumpScad file = do
     result <- parse <$> BS.readFile file
     case result of
       Left err -> fail err
-      Right a  -> return $ show a
+      Right a  -> return $ ppShow a

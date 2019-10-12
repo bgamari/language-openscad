@@ -349,7 +349,7 @@ topLevel =
            , TopLevelScope <$> object
            ]
   where
-    fileDirective keyword = do
+    fileDirective keyword = try $ do
       spaces
       symbol keyword
       path <- angles $ some (notChar '>')
