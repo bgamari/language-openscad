@@ -15,7 +15,10 @@ writeTopLevel x = case x of
 
 writeObject :: Object -> BS.ByteString
 writeObject obj = case obj of
-     Module (Ident ident) args maybeObj -> BS.pack (ident ++ "() ") `BS.append` fromMaybe BS.empty (fmap writeObject maybeObj)
+     Module (Ident ident) args maybeObj ->
+        BS.pack (ident ++ "()")
+        `BS.append` fromMaybe BS.empty (fmap (BS.append (BS.pack " ") . writeObject) maybeObj)
+        `BS.append` BS.pack ";"
      ForLoop ident expr obj     -> undefined
      Objects objs               -> undefined
      If expr obj maybeObj       -> undefined
