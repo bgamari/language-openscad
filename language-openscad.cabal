@@ -16,9 +16,9 @@ cabal-version:       >=1.10
 source-repository head
   type: git
   location: git://github.com/bgamari/language-openscad.git
-  
+
 library
-  exposed-modules:     Language.OpenSCAD
+  exposed-modules:     Language.OpenSCAD, Language.OpenSCAD.Writer
   other-extensions:    OverloadedStrings
   build-depends:       base >=4.6 && <4.13,
                        trifecta >= 2.0 && < 2.2,
