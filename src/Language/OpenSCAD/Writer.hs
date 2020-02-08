@@ -9,16 +9,16 @@ write = map writeTopLevel
 
 writeTopLevel :: TopLevel -> BS.ByteString
 writeTopLevel x = case x of
-    TopLevelScope obj    -> writeObject obj
+    TopLevelScope obj    -> writeObject True obj
     UseDirective str     -> BS.pack ("use <" ++ str ++ ">")
     IncludeDirective str -> BS.pack ("include <" ++ str ++ ">")
 
-writeObject :: Object -> BS.ByteString
-writeObject obj = case obj of
+writeObject :: Bool -> Object -> BS.ByteString
+writeObject isTopLevel obj = case obj of
      Module (Ident ident) args maybeObj ->
         BS.pack (ident ++ "()")
-        `BS.append` fromMaybe BS.empty (fmap (BS.append (BS.pack " ") . writeObject) maybeObj)
-        `BS.append` BS.pack ";"
+        `BS.append` fromMaybe BS.empty (fmap (BS.append (BS.pack " ") . writeObject False) maybeObj)
+        `BS.append` if isTopLevel then BS.pack ";" else BS.empty
      ForLoop ident expr obj     -> undefined
      Objects objs               -> undefined
      If expr obj maybeObj       -> undefined
