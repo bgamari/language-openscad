@@ -21,11 +21,13 @@ library
   exposed-modules:     Language.OpenSCAD, Language.OpenSCAD.Writer
   other-extensions:    OverloadedStrings
   build-depends:       base >=4.6 && <4.13,
-                       trifecta >= 2.0 && < 2.2,
+                       bytestring >= 0.10 && < 0.11,
                        charset >= 0.3 && < 0.4,
                        parsers >= 0.12 && <0.13,
+                       prettyprinter >= 1.6 && < 1.7,
                        scientific >= 0.3,
-                       bytestring >=0.10 && <0.11
+                       text >= 1.2 && < 1.3,
+                       trifecta >= 2.0 && < 2.2
   hs-source-dirs:      src
   default-language:    Haskell2010
 

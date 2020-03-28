@@ -1,8 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Language.OpenSCAD.Writer where
 import Language.OpenSCAD
-import qualified Data.ByteString.Char8 as BS
 import Data.Maybe (fromMaybe)
+import Data.Text.Lazy (Text)
+import qualified Data.ByteString.Char8 as BS
+import qualified Data.Text.Prettyprint.Doc as Prettyprint
+
+pretty :: [TopLevel] -> Prettyprint.Doc Text
+pretty = undefined
 
 write :: [TopLevel] -> [BS.ByteString]
 write = map writeTopLevel
