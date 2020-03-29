@@ -1,29 +1,30 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Language.OpenSCAD.Writer where
 import Language.OpenSCAD
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, maybeToList)
 import Data.Text.Lazy (Text)
-import qualified Data.ByteString.Char8 as BS
-import qualified Data.Text.Prettyprint.Doc as Prettyprint
+import Data.Text.Lazy.Builder (Builder, fromString, toLazyText)
+import Data.Text.Prettyprint.Doc (vsep, group, Doc)
+import qualified Data.Text.Prettyprint.Doc as P
 
-pretty :: [TopLevel] -> Prettyprint.Doc Text
-pretty = undefined
+pretty :: [TopLevel] -> Doc Text
+pretty = vsep . map prettyTopLevel
 
-write :: [TopLevel] -> [BS.ByteString]
-write = map writeTopLevel
 
-writeTopLevel :: TopLevel -> BS.ByteString
-writeTopLevel x = case x of
-    TopLevelScope obj    -> writeObject True obj
-    UseDirective str     -> BS.pack ("use <" ++ str ++ ">")
-    IncludeDirective str -> BS.pack ("include <" ++ str ++ ">")
+prettyTopLevel :: TopLevel -> Doc Text
+prettyTopLevel x = case x of
+    TopLevelScope obj    -> prettyObject True obj
+    UseDirective str     -> group $ vsep $ map t ["use", "<" <> (fromString str) <> ">"]
+    IncludeDirective str -> group $ vsep $ map t ["include", "<" <> (fromString str) <> ">"]
 
-writeObject :: Bool -> Object -> BS.ByteString
-writeObject isTopLevel obj = case obj of
+
+prettyObject :: Bool -> Object -> Doc Text
+prettyObject isTopLevel obj = case obj of
      Module (Ident ident) args maybeObj ->
-        BS.pack (ident ++ "()")
-        `BS.append` fromMaybe BS.empty (fmap (BS.append (BS.pack " ") . writeObject False) maybeObj)
-        `BS.append` if isTopLevel then BS.pack ";" else BS.empty
+        group $ vsep $
+            [ t $ (fromString ident) <> "()" ]
+            ++ maybeToList (fmap (prettyObject False) maybeObj)
+            ++ if isTopLevel then [t ";"] else []
      ForLoop ident expr obj     -> undefined
      Objects objs               -> undefined
      If expr obj maybeObj       -> undefined
@@ -34,3 +35,6 @@ writeObject isTopLevel obj = case obj of
      ModuleDef name args body   -> undefined
      VarDef name value          -> undefined
      FuncDef name args body     -> undefined
+
+t :: Builder -> Doc Text
+t = P.pretty . toLazyText
