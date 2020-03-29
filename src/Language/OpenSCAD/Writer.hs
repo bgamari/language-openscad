@@ -2,9 +2,8 @@
 module Language.OpenSCAD.Writer where
 import Language.OpenSCAD
 import Data.Maybe (fromMaybe, maybeToList)
-import Data.Text.Lazy (Text)
-import Data.Text.Lazy.Builder (Builder, fromString, toLazyText)
-import Data.Text.Prettyprint.Doc (vsep, group, Doc)
+import Data.Text.Lazy (Text, pack)
+import Data.Text.Prettyprint.Doc (vsep, group, Doc, line, softline)
 import qualified Data.Text.Prettyprint.Doc as P
 
 pretty :: [TopLevel] -> Doc Text
@@ -13,18 +12,16 @@ pretty = vsep . map prettyTopLevel
 
 prettyTopLevel :: TopLevel -> Doc Text
 prettyTopLevel x = case x of
-    TopLevelScope obj    -> prettyObject True obj
-    UseDirective str     -> group $ vsep $ map t ["use", "<" <> (fromString str) <> ">"]
-    IncludeDirective str -> group $ vsep $ map t ["include", "<" <> (fromString str) <> ">"]
+    TopLevelScope obj    -> prettyObject obj
+    UseDirective str     -> "use" </> "<" <> t str <> ">"
+    IncludeDirective str -> "include" </> "<" <> t str <> ">"
 
 
-prettyObject :: Bool -> Object -> Doc Text
-prettyObject isTopLevel obj = case obj of
-     Module (Ident ident) args maybeObj ->
-        group $ vsep $
-            [ t $ (fromString ident) <> "()" ]
-            ++ maybeToList (fmap (prettyObject False) maybeObj)
-            ++ if isTopLevel then [t ";"] else []
+prettyObject :: Object -> Doc Text
+prettyObject obj = case obj of
+     Module (Ident ident) args maybeObj -> group $ t ident
+            <> "()"
+            <> fromMaybe ";" (fmap (mappend line . prettyObject) maybeObj)
      ForLoop ident expr obj     -> undefined
      Objects objs               -> undefined
      If expr obj maybeObj       -> undefined
@@ -36,5 +33,8 @@ prettyObject isTopLevel obj = case obj of
      VarDef name value          -> undefined
      FuncDef name args body     -> undefined
 
-t :: Builder -> Doc Text
-t = P.pretty . toLazyText
+t :: String -> Doc Text
+t = P.pretty . pack
+
+x <$> y = x <> line <> y
+x </> y = x <> softline <> y
