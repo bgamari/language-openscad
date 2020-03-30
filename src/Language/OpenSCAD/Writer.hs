@@ -4,12 +4,13 @@ module Language.OpenSCAD.Writer where
 
 import           Data.Maybe                (fromMaybe, maybeToList)
 import           Data.Text.Lazy            (Text, pack)
-import           Data.Text.Prettyprint.Doc (Doc, group, line, softline, vsep)
+import           Data.Text.Prettyprint.Doc (Doc, group, hardline, line,
+                                            softline, vsep)
 import qualified Data.Text.Prettyprint.Doc as P
 import           Language.OpenSCAD
 
 pretty :: [TopLevel] -> Doc Text
-pretty = vsep . map prettyTopLevel
+pretty xs = vsep (map prettyTopLevel xs) <> hardline
 
 prettyTopLevel :: TopLevel -> Doc Text
 prettyTopLevel x =
