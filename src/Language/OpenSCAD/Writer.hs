@@ -56,8 +56,8 @@ prettyExpr expr =
       "[" <//> align (concatWithComma (map prettyExpr exprs)) <//> "]"
     EBool bool ->
       case bool of
-        True  -> P.pretty ("true" :: Text)
-        False -> P.pretty ("false" :: Text)
+        True  -> "true"
+        False -> "false"
      --ERange (Range Expr)
      --EString String
      --EFunc Ident [Argument Expr]
