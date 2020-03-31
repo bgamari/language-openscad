@@ -15,7 +15,7 @@ main :: IO ()
 main = do
   scad <- BS.readFile "test.scad"
   let layoutOptions =
-        P.LayoutOptions {P.layoutPageWidth = P.AvailablePerLine 80 1}
+        P.LayoutOptions {P.layoutPageWidth = P.AvailablePerLine 20 1}
   case parse scad of
     Left err -> putStrLn err
     Right tl ->

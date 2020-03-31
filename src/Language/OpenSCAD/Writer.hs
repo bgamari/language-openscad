@@ -7,9 +7,9 @@ import           Data.Double.Conversion.Text (toShortest)
 import           Data.Maybe                  (fromMaybe, maybeToList)
 import           Data.Text.Lazy              (Text, pack)
 import           Data.Text.Prettyprint.Doc   (Doc, align, concatWith, fillSep,
-                                              group, hang, hardline, indent,
-                                              line, line', nest, sep, softline,
-                                              softline', vsep)
+                                              flatAlt, group, hang, hardline,
+                                              indent, line, line', nest, sep,
+                                              softline, softline', vsep)
 import qualified Data.Text.Prettyprint.Doc   as P
 import           Language.OpenSCAD
 import           Prelude                     hiding ((<$>))
@@ -29,7 +29,7 @@ prettyObject obj =
   case obj of
     Module (Ident ident) args maybeObj ->
       t ident <>
-      "(" <//> prettyArguments args <//> ")" <>
+      group ("(" <$$> (flatAlt (indent 2 "") "") <> (prettyArguments args) <$$> ")") <>
       fromMaybe ";" (fmap (nest 2 . mappend line . prettyObject) maybeObj)
     ForLoop ident expr obj -> undefined
     Objects objs -> undefined
@@ -90,4 +90,4 @@ x </> y = x <> softline <> y
 
 x <//> y = x <> softline' <> y
 
-concatWithComma = concatWith (\x y -> x <> "," </> y)
+concatWithComma = concatWith (\x y -> x <> "," <$> y)
