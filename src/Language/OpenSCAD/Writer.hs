@@ -25,7 +25,8 @@ prettyObject obj =
     Module (Ident ident) args maybeObj ->
       group $
       t ident <>
-      "()" <> fromMaybe ";" (fmap (mappend line . prettyObject) maybeObj)
+      "(" </> prettyArguments args </> ")" <>
+      fromMaybe ";" (fmap (mappend line . prettyObject) maybeObj)
     ForLoop ident expr obj   -> undefined
     Objects objs             -> undefined
     If expr obj maybeObj     -> undefined
@@ -36,6 +37,40 @@ prettyObject obj =
     ModuleDef name args body -> undefined
     VarDef name value        -> undefined
     FuncDef name args body   -> undefined
+
+prettyArguments :: [Argument Expr] -> Doc Text
+prettyArguments args =
+  group $ vsep $ map (\(Argument expr) -> prettyExpr expr <> ",") args
+
+prettyExpr :: Expr -> Doc Text
+prettyExpr expr =
+  case expr of
+    EVar (Ident ident) -> undefined
+    EIndex expr1 expr2 -> undefined
+    ENum double -> P.pretty double
+    EVec exprs ->
+      "[" <> (foldr (\a b -> a <> "," </> b) "" (map prettyExpr exprs)) <> "]"
+     --ERange (Range Expr)
+     --EString String
+     --EBool Bool
+     --EFunc Ident [Argument Expr]
+     --ENegate Expr
+     --EPlus Expr Expr
+     --EMinus Expr Expr
+     --EMult Expr Expr
+     --EDiv Expr Expr
+     --EMod Expr Expr
+     --EEquals Expr Expr
+     --ENotEquals Expr Expr
+     --EGT Expr Expr
+     --EGE Expr Expr
+     --ELT Expr Expr
+     --ELE Expr Expr
+     --ENot Expr
+     --EOr Expr Expr
+     --EAnd Expr Expr
+     --ETernary Expr Expr Expr
+     --EParen Expr
 
 t :: String -> Doc Text
 t = P.pretty . pack
