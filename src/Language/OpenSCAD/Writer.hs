@@ -47,7 +47,10 @@ prettyExpr expr =
   case expr of
     EVar (Ident ident) -> t ident
     EIndex expr1 expr2 -> prettyExpr expr1 <> "[" </> prettyExpr expr2 </> "]"
-    ENum double -> P.pretty double
+    ENum double ->
+      case isDecimal double of
+        True  -> P.pretty double
+        False -> P.pretty (floor double :: Integer)
     EVec exprs -> "[" </> align (concatWithComma (map prettyExpr exprs)) </> "]"
      --ERange (Range Expr)
      --EString String
@@ -79,3 +82,6 @@ x <$$> y = x <> line <> y
 x </> y = x <> softline <> y
 
 concatWithComma = concatWith (\x y -> x <> "," </> y)
+
+isDecimal :: Double -> Bool
+isDecimal n = fromIntegral (floor n :: Integer) /= n
