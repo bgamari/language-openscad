@@ -1,0 +1,6 @@
+[ TopLevelScope
+    VarDef
+      { varName = Ident "x"
+      , varValue = EVec [ ENum 1.0 , ENum 2.0 , ENum 3.0 ]
+      }
+]
