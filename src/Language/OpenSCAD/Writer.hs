@@ -4,13 +4,14 @@ module Language.OpenSCAD.Writer where
 
 import           Data.Maybe                (fromMaybe, maybeToList)
 import           Data.Text.Lazy            (Text, pack)
-import           Data.Text.Prettyprint.Doc (Doc, group, hardline, line,
+import           Data.Text.Prettyprint.Doc (Doc, align, concatWith, fillSep,
+                                            group, hardline, line, sep,
                                             softline, vsep)
 import qualified Data.Text.Prettyprint.Doc as P
 import           Language.OpenSCAD
 
 pretty :: [TopLevel] -> Doc Text
-pretty xs = vsep (map prettyTopLevel xs) <> hardline
+pretty = concatWith (<>) . map (\x -> prettyTopLevel x <> hardline)
 
 prettyTopLevel :: TopLevel -> Doc Text
 prettyTopLevel x =
@@ -40,7 +41,7 @@ prettyObject obj =
 
 prettyArguments :: [Argument Expr] -> Doc Text
 prettyArguments args =
-  group $ vsep $ map (\(Argument expr) -> prettyExpr expr <> ",") args
+  align $ sep $ map (\(Argument expr) -> prettyExpr expr) args
 
 prettyExpr :: Expr -> Doc Text
 prettyExpr expr =
@@ -49,7 +50,8 @@ prettyExpr expr =
     EIndex expr1 expr2 -> undefined
     ENum double -> P.pretty double
     EVec exprs ->
-      "[" <> (foldr (\a b -> a <> "," </> b) "" (map prettyExpr exprs)) <> "]"
+      "[" </> align (concatWith (\x y -> x <> "," </> y) (map prettyExpr exprs)) </>
+      "]"
      --ERange (Range Expr)
      --EString String
      --EBool Bool
@@ -75,6 +77,6 @@ prettyExpr expr =
 t :: String -> Doc Text
 t = P.pretty . pack
 
-x <$> y = x <> line <> y
+x <$$> y = x <> line <> y
 
 x </> y = x <> softline <> y
