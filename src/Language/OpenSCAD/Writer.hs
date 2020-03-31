@@ -6,9 +6,11 @@ import           Data.Maybe                (fromMaybe, maybeToList)
 import           Data.Text.Lazy            (Text, pack)
 import           Data.Text.Prettyprint.Doc (Doc, align, concatWith, fillSep,
                                             group, hang, hardline, indent, line,
-                                            nest, sep, softline, vsep)
+                                            line', nest, sep, softline,
+                                            softline', vsep)
 import qualified Data.Text.Prettyprint.Doc as P
 import           Language.OpenSCAD
+import           Prelude                   hiding ((<$>))
 
 pretty :: [TopLevel] -> Doc Text
 pretty = concatWith (<>) . map (\x -> prettyTopLevel x <> hardline)
@@ -25,7 +27,7 @@ prettyObject obj =
   case obj of
     Module (Ident ident) args maybeObj ->
       t ident <>
-      "(" </> prettyArguments args </> ")" <>
+      "(" <//> prettyArguments args <//> ")" <>
       fromMaybe ";" (fmap (nest 2 . mappend line . prettyObject) maybeObj)
     ForLoop ident expr obj -> undefined
     Objects objs -> undefined
@@ -46,12 +48,13 @@ prettyExpr :: Expr -> Doc Text
 prettyExpr expr =
   case expr of
     EVar (Ident ident) -> t ident
-    EIndex expr1 expr2 -> prettyExpr expr1 <> "[" </> prettyExpr expr2 </> "]"
+    EIndex expr1 expr2 -> prettyExpr expr1 <> "[" <//> prettyExpr expr2 <//> "]"
     ENum double ->
       case isDecimal double of
         True  -> P.pretty double
         False -> P.pretty (floor double :: Integer)
-    EVec exprs -> "[" </> align (concatWithComma (map prettyExpr exprs)) </> "]"
+    EVec exprs ->
+      "[" <//> align (concatWithComma (map prettyExpr exprs)) <//> "]"
      --ERange (Range Expr)
      --EString String
      --EBool Bool
@@ -77,9 +80,13 @@ prettyExpr expr =
 t :: String -> Doc Text
 t = P.pretty . pack
 
-x <$$> y = x <> line <> y
+x <$> y = x <> line <> y
+
+x <$$> y = x <> line' <> y
 
 x </> y = x <> softline <> y
+
+x <//> y = x <> softline' <> y
 
 concatWithComma = concatWith (\x y -> x <> "," </> y)
 
