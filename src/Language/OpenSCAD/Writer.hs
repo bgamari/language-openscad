@@ -29,7 +29,7 @@ prettyObject obj =
   case obj of
     Module (Ident ident) args maybeObj ->
       t ident <>
-      group ("(" <$$> (flatAlt (indent 2 "") "") <> (prettyArguments args) <$$> ")") <>
+      group ("(" <$$> ifNotFlat (indent 2) <> (prettyArguments args) <$$> ")") <>
       fromMaybe ";" (fmap (nest 2 . mappend line . prettyObject) maybeObj)
     ForLoop ident expr obj -> undefined
     Objects objs -> undefined
@@ -53,7 +53,9 @@ prettyExpr expr =
     EIndex expr1 expr2 -> prettyExpr expr1 <> "[" <//> prettyExpr expr2 <//> "]"
     ENum double -> P.pretty $ toShortest double
     EVec exprs ->
-      "[" <//> align (concatWithComma (map prettyExpr exprs)) <//> "]"
+      group $
+      "[" <$$> ifNotFlat (indent 2) <>
+      align (concatWithComma (map prettyExpr exprs)) <> ifNotFlat' "," <$$> "]"
     EBool bool ->
       case bool of
         True  -> "true"
@@ -91,3 +93,7 @@ x </> y = x <> softline <> y
 x <//> y = x <> softline' <> y
 
 concatWithComma = concatWith (\x y -> x <> "," <$> y)
+
+ifNotFlat expr = flatAlt (expr "") ""
+
+ifNotFlat' doc = flatAlt doc ""
