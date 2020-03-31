@@ -9,7 +9,7 @@ import           Data.Text.Lazy              (Text, pack)
 import           Data.Text.Prettyprint.Doc   (Doc, align, concatWith, fillSep,
                                               flatAlt, group, hang, hardline,
                                               indent, line, line', nest, sep,
-                                              softline, softline', vsep)
+                                              softline, softline', vsep, (<+>))
 import qualified Data.Text.Prettyprint.Doc   as P
 import           Language.OpenSCAD
 import           Prelude                     hiding ((<$>))
@@ -39,7 +39,7 @@ prettyObject obj =
     RootMod obj -> undefined
     DisableMod obj -> undefined
     ModuleDef name args body -> undefined
-    VarDef (Ident name) value -> t name </> "=" </> prettyExpr value <> ";"
+    VarDef (Ident name) value -> t name <+> "=" </> prettyExpr value <> ";"
     FuncDef name args body -> undefined
 
 prettyArguments :: [Argument Expr] -> Doc Text
