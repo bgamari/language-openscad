@@ -2,6 +2,7 @@
 
 module Language.OpenSCAD.Writer where
 
+import           Data.Char                 (toLower)
 import           Data.Maybe                (fromMaybe, maybeToList)
 import           Data.Text.Lazy            (Text, pack)
 import           Data.Text.Prettyprint.Doc (Doc, align, concatWith, fillSep,
@@ -55,9 +56,12 @@ prettyExpr expr =
         False -> P.pretty (floor double :: Integer)
     EVec exprs ->
       "[" <//> align (concatWithComma (map prettyExpr exprs)) <//> "]"
+    EBool bool ->
+      case bool of
+        True  -> P.pretty ("true" :: Text)
+        False -> P.pretty ("false" :: Text)
      --ERange (Range Expr)
      --EString String
-     --EBool Bool
      --EFunc Ident [Argument Expr]
      --ENegate Expr
      --EPlus Expr Expr
