@@ -2,16 +2,17 @@
 
 module Language.OpenSCAD.Writer where
 
-import           Data.Char                 (toLower)
-import           Data.Maybe                (fromMaybe, maybeToList)
-import           Data.Text.Lazy            (Text, pack)
-import           Data.Text.Prettyprint.Doc (Doc, align, concatWith, fillSep,
-                                            group, hang, hardline, indent, line,
-                                            line', nest, sep, softline,
-                                            softline', vsep)
-import qualified Data.Text.Prettyprint.Doc as P
+import           Data.Char                   (toLower)
+import           Data.Double.Conversion.Text (toShortest)
+import           Data.Maybe                  (fromMaybe, maybeToList)
+import           Data.Text.Lazy              (Text, pack)
+import           Data.Text.Prettyprint.Doc   (Doc, align, concatWith, fillSep,
+                                              group, hang, hardline, indent,
+                                              line, line', nest, sep, softline,
+                                              softline', vsep)
+import qualified Data.Text.Prettyprint.Doc   as P
 import           Language.OpenSCAD
-import           Prelude                   hiding ((<$>))
+import           Prelude                     hiding ((<$>))
 
 pretty :: [TopLevel] -> Doc Text
 pretty = concatWith (<>) . map (\x -> prettyTopLevel x <> hardline)
@@ -50,10 +51,7 @@ prettyExpr expr =
   case expr of
     EVar (Ident ident) -> t ident
     EIndex expr1 expr2 -> prettyExpr expr1 <> "[" <//> prettyExpr expr2 <//> "]"
-    ENum double ->
-      case isDecimal double of
-        True  -> P.pretty double
-        False -> P.pretty (floor double :: Integer)
+    ENum double -> P.pretty $ toShortest double
     EVec exprs ->
       "[" <//> align (concatWithComma (map prettyExpr exprs)) <//> "]"
     EBool bool ->
@@ -93,6 +91,3 @@ x </> y = x <> softline <> y
 x <//> y = x <> softline' <> y
 
 concatWithComma = concatWith (\x y -> x <> "," </> y)
-
-isDecimal :: Double -> Bool
-isDecimal n = fromIntegral (floor n :: Integer) /= n

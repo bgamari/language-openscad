@@ -23,6 +23,7 @@ library
   build-depends:       base >=4.6 && <4.13,
                        bytestring >= 0.10 && < 0.11,
                        charset >= 0.3 && < 0.4,
+                       double-conversion >= 2.0  && < 2.1,
                        parsers >= 0.12 && <0.13,
                        prettyprinter >= 1.2 && < 1.3,
                        scientific >= 0.3,
