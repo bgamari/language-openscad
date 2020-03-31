@@ -35,7 +35,7 @@ prettyObject obj =
     RootMod obj -> undefined
     DisableMod obj -> undefined
     ModuleDef name args body -> undefined
-    VarDef name value -> undefined
+    VarDef (Ident name) value -> t name </> "=" </> prettyExpr value <> ";"
     FuncDef name args body -> undefined
 
 prettyArguments :: [Argument Expr] -> Doc Text
@@ -45,8 +45,8 @@ prettyArguments args =
 prettyExpr :: Expr -> Doc Text
 prettyExpr expr =
   case expr of
-    EVar (Ident ident) -> undefined
-    EIndex expr1 expr2 -> undefined
+    EVar (Ident ident) -> t ident
+    EIndex expr1 expr2 -> prettyExpr expr1 <> "[" </> prettyExpr expr2 </> "]"
     ENum double -> P.pretty double
     EVec exprs -> "[" </> align (concatWithComma (map prettyExpr exprs)) </> "]"
      --ERange (Range Expr)
