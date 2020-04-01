@@ -60,7 +60,11 @@ prettyExpr expr =
       case bool of
         True  -> "true"
         False -> "false"
-     --ERange (Range Expr)
+    ERange (Range start stop maybeStep) ->
+      "[" <//> prettyExpr start <>
+      ":" <//>
+      fromMaybe "" (fmap (\x -> prettyExpr x <> ":" <> softline') maybeStep) <>
+      prettyExpr stop <//> "]"
      --EString String
      --EFunc Ident [Argument Expr]
      --ENegate Expr
