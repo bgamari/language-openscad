@@ -7,6 +7,7 @@ import System.FilePath
 import Test.Tasty
 import Test.Tasty.Silver
 import Text.Show.Pretty
+import TestProperties (propertyTests)
 
 main :: IO ()
 main = do
@@ -16,10 +17,13 @@ main = do
 getTests :: IO TestTree
 getTests = do
     cases <- findByExtension [".scad"] "tests"
-    return $ testGroup "golden tests"
-        [ goldenVsAction base (file <.> "parsed") (dumpScad file) T.pack
-        | file <- cases
-        , let base = takeBaseName file
+    return $ testGroup "all"
+        [ testGroup "golden tests"
+            [ goldenVsAction base (file <.> "parsed") (dumpScad file) T.pack
+            | file <- cases
+            , let base = takeBaseName file
+            ]
+        , propertyTests
         ]
 
 dumpScad :: FilePath -> IO String

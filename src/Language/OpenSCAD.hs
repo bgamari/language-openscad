@@ -46,7 +46,7 @@ ident = token $ do
 -- | An item in an argument list
 data Argument a = Argument a            -- ^ Just a plain value
                 | NamedArgument Ident a -- ^ A named argument
-                deriving (Show)
+                deriving (Show, Eq)
 
 -- | An OpenSCAD geometry object
 data Object
@@ -69,7 +69,7 @@ data Object
               , funcArgs     :: [Ident]
               , funcBody     :: Expr
               }
-    deriving (Show)
+    deriving (Show, Eq)
 
 -- | An OpenSCAD expression
 data Expr
@@ -98,12 +98,12 @@ data Expr
     | EAnd Expr Expr
     | ETernary Expr Expr Expr
     | EParen Expr
-    deriving (Show)
+    deriving (Show, Eq)
 
 -- | @Range start end step@ denotes a list starting at @start@ and
 -- stopping at @end@ with increments of @step@.
 data Range a = Range a a (Maybe a)
-             deriving (Show)
+             deriving (Show, Eq)
 
 
 sepByTill :: Parser delim -> Parser end -> Parser a -> Parser [a]
@@ -341,7 +341,7 @@ object = spaces >> choice
 data TopLevel = TopLevelScope Object
               | UseDirective String
               | IncludeDirective String
-              deriving (Show)
+              deriving (Show, Eq)
 
 -- | Parse the top-level definitions of an OpenSCAD source file
 topLevel :: Parser TopLevel
