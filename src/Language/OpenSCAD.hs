@@ -391,4 +391,4 @@ singleton :: a -> [a]
 singleton x = [x]
 
 someSemis :: Parser ()
-someSemis = spaces >> sepEndBy spaces (skipSome semi) >> return ()
+someSemis = sepEndBy1 semi spaces >> return ()
