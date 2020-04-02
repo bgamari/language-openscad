@@ -27,7 +27,7 @@ instance Arbitrary TopLevel where
     where
       modulePathString :: Gen String
       modulePathString =
-        fmap (filter (\c -> notElem c "<") . getUnicodeString) arbitrary
+        fmap (filter (\c -> notElem c ">") . getUnicodeString) arbitrary
 
 tracedPropEq :: (Show a, Eq a) => a -> a -> Bool
 tracedPropEq = tracedProp (==) "EQUAL"
