@@ -1,7 +1,7 @@
 module TestProperties where
 
 import           Data.ByteString.Char8    (pack)
-import           Debug.Trace
+import           Debug.Trace              (trace)
 import           Language.OpenSCAD
 import           Language.OpenSCAD.Writer
 import           Test.QuickCheck
@@ -19,7 +19,11 @@ prop_prettyAndParseTopLevel use =
   Right [use] `tracedPropEq` (parse $ pack $ show $ pretty [use])
 
 instance Arbitrary TopLevel where
-  arbitrary = oneof [modulePathString >>= return . UseDirective, modulePathString >>= return . IncludeDirective]
+  arbitrary =
+    oneof
+      [ modulePathString >>= return . UseDirective
+      , modulePathString >>= return . IncludeDirective
+      ]
     where
       modulePathString :: Gen String
       modulePathString =
@@ -32,15 +36,15 @@ tracedProp :: Show a => (a -> a -> Bool) -> String -> a -> a -> Bool
 tracedProp fn s t1 t2 =
   fn t1 t2 ||
   trace
-    ("=====================================" ++
-     "=====================================\n" ++
+    ("\n\n=====================================" ++
+     "=====================================\n\n" ++
      show t1 ++
-     "\n" ++
+     "\n\n" ++
      " - DOES NOT " ++
      s ++
-     " -\n" ++
+     " -\n\n" ++
      show t2 ++
-     "\n" ++
+     "\n\n" ++
      "=====================================" ++
-     "=====================================")
+     "=====================================\n\n")
     False

@@ -9,7 +9,7 @@ import           Data.Text.Lazy              (Text, pack)
 import           Data.Text.Prettyprint.Doc   (Doc, align, concatWith, fillSep,
                                               flatAlt, group, hang, hardline,
                                               indent, line, line', nest, sep,
-                                              softline, softline', vsep, (<+>))
+                                              softline, softline', vsep, (<+>), (<>))
 import qualified Data.Text.Prettyprint.Doc   as P
 import           Language.OpenSCAD
 import           Prelude                     hiding ((<$>))
