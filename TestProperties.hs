@@ -19,11 +19,11 @@ prop_prettyAndParseTopLevel use =
   Right [use] `tracedPropEq` (parse $ pack $ show $ pretty [use])
 
 instance Arbitrary TopLevel where
-  arbitrary = oneof [nonCaretASCIIString >>= return . UseDirective]
-
-nonCaretASCIIString :: Gen String
-nonCaretASCIIString =
-  listOf1 $ elements $ ['!' .. '\59'] ++ ['\61'] ++ ['\63' .. '\126']
+  arbitrary = oneof [modulePathString >>= return . UseDirective, modulePathString >>= return . IncludeDirective]
+    where
+      modulePathString :: Gen String
+      modulePathString =
+        fmap (filter (\c -> notElem c "<") . getUnicodeString) arbitrary
 
 tracedPropEq :: (Show a, Eq a) => a -> a -> Bool
 tracedPropEq = tracedProp (==) "EQUAL"
