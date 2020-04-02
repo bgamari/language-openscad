@@ -1,5 +1,8 @@
 [ UseDirective "hello.scad"
 , UseDirective "hello.scad"
+, UseDirective "hello.scad"
+, IncludeDirective "hello.scad"
+, IncludeDirective "hello.scad"
 , IncludeDirective "hello.scad"
 , UseDirective ""
 , IncludeDirective ""
