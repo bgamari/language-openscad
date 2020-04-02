@@ -1,4 +1,6 @@
-[ TopLevelScope
+[ UseDirective "x"
+, IncludeDirective "y"
+, TopLevelScope
     ModuleDef
       { moduleName = Ident "test"
       , moduleArgs =
