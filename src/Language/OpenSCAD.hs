@@ -347,10 +347,13 @@ data TopLevel = TopLevelScope Object
 topLevel :: Parser TopLevel
 topLevel = do
     spaces
-    choice [ UseDirective <$> fileDirective "use"
-           , IncludeDirective <$> fileDirective "include"
-           , TopLevelScope <$> object
-           ]
+    optional someSemis
+    tl <- choice [ UseDirective <$> fileDirective "use"
+                 , IncludeDirective <$> fileDirective "include"
+                 , TopLevelScope <$> object
+                 ]
+    optional someSemis
+    return tl
   where
     fileDirective keyword = try $ do
       symbol keyword
