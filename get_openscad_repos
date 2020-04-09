@@ -14,6 +14,8 @@ else:
 
 
 PAGE_SIZE = 100
+# the rate limit is also 10 per minute and we seem to hit that if we go to 10 pages
+MAX_NUMBER_OF_PAGES = 9
 TERM = "language:openscad"
 
 
@@ -25,24 +27,46 @@ def query(term, page):
     return json.loads(data)
 
 
-print('searching github for "{}"'.format(TERM))
+print('searching github for', "'" + TERM + "',", 'limiting to', MAX_NUMBER_OF_PAGES * PAGE_SIZE, 'repositories')
 data = query(TERM, page=1)
 items = data["items"]
 
 total = data["total_count"]
-pages = int(math.ceil(total / PAGE_SIZE))
+pages = min(MAX_NUMBER_OF_PAGES, int(math.ceil(total / PAGE_SIZE)) + 1)
 
-for n in range(2, pages + 2):
-    time.sleep(0.1)
+
+print("got results for page 1")
+
+
+for n in range(2, pages + 1):
+    time.sleep(2)
     data = query(TERM, page=n)
     items += data["items"]
+    print("got results for page", n)
+
 
 print("found {} repositories".format(len(items)))
 
+
+def remove_non_scad(folder):
+    for root, dirs, files in os.walk(folder):
+        for f in files:
+            path = os.path.join(root, f)
+            if os.path.splitext(f)[1].lower() != '.scad':
+                os.remove(path)
+            else:
+                print('Keeping', f)
+
+
+processes = []
 for i, item in enumerate(items[1:]):
     name = item["full_name"]
     folder = os.path.join("test-repos", name)
     if not os.path.exists(folder):
-        print("cloning {}".format(name))
-        cmd = ["git", "clone", "--depth=1", item["html_url"], folder]
-        subprocess.call(cmd)
+        print("Cloning {}".format(name))
+        cmd = ["git", "clone", "--quiet", "--filter=blob:none", "--depth=1", item["html_url"], folder]
+        processes.append((subprocess.Popen(cmd), folder))
+    if i >= 10 and i % 10 == 0:
+	for process, folder in processes[i - 10: i]:
+	    process.wait()
+            remove_non_scad(folder)
