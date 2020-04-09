@@ -96,3 +96,5 @@ jobs:
       env:
         ARGS: ${{ matrix.plan.resolver }}
         BUILD: ${{ matrix.plan.build }}
+    - name: Test
+      run: stack test
