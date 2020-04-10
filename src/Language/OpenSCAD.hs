@@ -181,7 +181,7 @@ term = do
   e <- choice
     [ try funcRef
     , ERange <$> try range
-    , EVec <$> brackets (commaSep expression)
+    , EVec <$> brackets (sepEndBy expression (some comma))
     , EString <$> stringLit
     , EBool <$> choice [ keyword "true" >> return True
                        , keyword "false" >> return False

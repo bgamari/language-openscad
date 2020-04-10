@@ -1,0 +1,26 @@
+[ TopLevelScope
+    VarDef
+      { varName = Ident "x"
+      , varValue = EVec [ ENum 1.0 , ENum 2.0 , ENum 3.0 ]
+      }
+, TopLevelScope
+    VarDef
+      { varName = Ident "y"
+      , varValue = EVec [ ENum 1.0 , ENum 2.0 , ENum 3.0 ]
+      }
+, TopLevelScope
+    VarDef
+      { varName = Ident "z"
+      , varValue = EVec [ ENum 1.0 , ENum 2.0 , ENum 3.0 ]
+      }
+, TopLevelScope
+    VarDef
+      { varName = Ident "a"
+      , varValue = EVec [ ENum 1.0 , ENum 2.0 , ENum 3.0 ]
+      }
+, TopLevelScope
+    VarDef
+      { varName = Ident "b"
+      , varValue = EVec [ ENum 1.0 , ENum 2.0 , ENum 3.0 ]
+      }
+]
