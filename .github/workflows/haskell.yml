@@ -96,5 +96,9 @@ jobs:
         env:
           ARGS: ${{ matrix.plan.resolver }}
           BUILD: ${{ matrix.plan.build }}
+
       - name: Test
         run: stack test
+
+      - name: Test with repos
+        run: ./get_openscad_repos
