@@ -260,7 +260,7 @@ block :: Parser a -> Parser [a]
 block parser = do
     xs <- between (char '{' >> spaces) (char '}') (many parser)
     spaces
-    optional semi
+    optional someSemis
     return xs
 
 -- | Parse an OpenSCAD object
@@ -283,7 +283,7 @@ object = spaces >> choice
       name <- ident
       args <- refArguments
       spaces
-      block <- (semi >> return Nothing) <|> fmap Just object
+      block <- (someSemis >> return Nothing) <|> fmap Just object
       return $ Module name args block
 
     forLoop = do
@@ -325,7 +325,7 @@ object = spaces >> choice
       name <- ident
       equals
       value <- expression
-      semi
+      someSemis
       return $ VarDef name value
 
     funcDef = do
@@ -334,7 +334,7 @@ object = spaces >> choice
       args <- parens $ commaSep ident
       equals
       body <- expression
-      semi
+      someSemis
       return $ FuncDef name args body
 
 -- | Things which can appear at the top level of an OpenSCAD source file
@@ -347,15 +347,18 @@ data TopLevel = TopLevelScope Object
 topLevel :: Parser TopLevel
 topLevel = do
     spaces
-    choice [ UseDirective <$> fileDirective "use"
-           , IncludeDirective <$> fileDirective "include"
-           , TopLevelScope <$> object
-           ]
+    optional someSemis
+    tl <- choice [ UseDirective <$> fileDirective "use"
+                 , IncludeDirective <$> fileDirective "include"
+                 , TopLevelScope <$> object
+                 ]
+    optional someSemis
+    return tl
   where
     fileDirective keyword = try $ do
       symbol keyword
       path <- runUnspaced $ angles $ many (notChar '>')
-      skipMany semi
+      optional someSemis
       return path
 
 -- not currently safe due to need to strip comments
@@ -390,3 +393,5 @@ stripComments = go BS.empty
 singleton :: a -> [a]
 singleton x = [x]
 
+someSemis :: Parser ()
+someSemis = sepEndBy1 semi spaces >> return ()

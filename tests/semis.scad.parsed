@@ -1,0 +1,24 @@
+[ UseDirective "x"
+, IncludeDirective "y"
+, TopLevelScope
+    ModuleDef
+      { moduleName = Ident "test"
+      , moduleArgs =
+          [ ( Ident "y" , Nothing ) , ( Ident "x" , Just (ENum 1.0) ) ]
+      , moduleBody =
+          [ Module
+              (Ident "circle") [ NamedArgument (Ident "r") (ENum 1.0) ] Nothing
+          , Module
+              (Ident "circle") [ NamedArgument (Ident "r") (ENum 1.0) ] Nothing
+          , FuncDef
+              { funcName = Ident "x"
+              , funcArgs = [ Ident "a" , Ident "b" ]
+              , funcBody = EPlus (EVar (Ident "a")) (EVar (Ident "b"))
+              }
+          , Module
+              (Ident "cube")
+              [ Argument (EVec [ ENum 1.0 , ENum 2.0 , ENum 3.0 ]) ]
+              Nothing
+          ]
+      }
+]
