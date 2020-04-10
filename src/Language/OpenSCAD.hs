@@ -354,8 +354,8 @@ topLevel = do
   where
     fileDirective keyword = try $ do
       symbol keyword
-      path <- angles $ some (notChar '>')
-      optional semi
+      path <- runUnspaced $ angles $ many (notChar '>')
+      skipMany semi
       return path
 
 -- not currently safe due to need to strip comments
