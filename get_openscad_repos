@@ -14,8 +14,9 @@ else:
 
 
 PAGE_SIZE = 100
-# the rate limit is also 10 per minute and we seem to hit that if we go to 10 pages
-MAX_NUMBER_OF_PAGES = 9
+# the rate limit is also 10 per minute and we seem to hit that if we go to more than 9 pages
+# additionally, we some space-constraint in github actions, so we limit it to 2
+MAX_NUMBER_OF_PAGES = 2
 TERM = "language:openscad"
 
 
