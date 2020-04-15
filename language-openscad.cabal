@@ -16,7 +16,7 @@ cabal-version:       >=1.10
 source-repository head
   type: git
   location: git://github.com/bgamari/language-openscad.git
-  
+
 library
   exposed-modules:     Language.OpenSCAD
   other-extensions:    OverloadedStrings
@@ -40,6 +40,8 @@ test-suite test-parse-openscad
                        text,
                        tasty,
                        tasty-silver,
+                       tasty-quickcheck,
+                       QuickCheck >= 2.13 && < 2.14,
                        language-openscad
   default-language:    Haskell2010
 

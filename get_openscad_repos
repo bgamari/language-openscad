@@ -1,0 +1,89 @@
+#!/usr/bin/env python
+from __future__ import print_function
+import json
+import math
+import subprocess
+import time
+import os.path
+import sys
+
+if sys.version_info[0] < 3:
+    # python2
+    import urllib2 as request
+else:
+    # python3
+    import urllib.request as request
+
+
+PAGE_SIZE = 100
+# the rate limit is also 10 per minute and we seem to hit that if we go to more than 9 pages
+# additionally, we some space-constraint in github actions, so we limit it to 2
+MAX_NUMBER_OF_PAGES = 9
+TERM = "language:openscad"
+
+
+def query(term, page):
+    url = "https://api.github.com/search/repositories?q={}&page={}&per_page={}".format(
+        term, page, PAGE_SIZE
+    )
+    data = request.urlopen(url).read().decode("utf-8")
+    return json.loads(data)
+
+
+print(
+    "searching github for",
+    "'" + TERM + "',",
+    "limiting to",
+    MAX_NUMBER_OF_PAGES * PAGE_SIZE,
+    "repositories",
+)
+data = query(TERM, page=1)
+items = data["items"]
+
+total = data["total_count"]
+pages = min(MAX_NUMBER_OF_PAGES, int(math.ceil(total / PAGE_SIZE)) + 1)
+
+
+print("got results for page 1")
+
+
+for n in range(2, pages + 1):
+    time.sleep(2)
+    data = query(TERM, page=n)
+    items += data["items"]
+    print("got results for page", n)
+
+
+print("found {} repositories".format(len(items)))
+
+
+def remove_non_scad(folder):
+    for root, dirs, files in os.walk(folder):
+        for f in files:
+            path = os.path.join(root, f)
+            if os.path.splitext(f)[1].lower() != ".scad":
+                os.remove(path)
+            else:
+                print("Keeping", f)
+
+
+processes = []
+for i, item in enumerate(items[1:]):
+    name = item["full_name"]
+    folder = os.path.join("test-repos", name)
+    if not os.path.exists(folder):
+        print("Cloning {}".format(name))
+        cmd = [
+            "git",
+            "clone",
+            "--quiet",
+            "--filter=blob:none",
+            "--depth=1",
+            item["html_url"],
+            folder,
+        ]
+        processes.append((subprocess.Popen(cmd), folder))
+    if i > 0 and i % 2 == 0:
+        for process, folder in processes[i - 2 : i]:
+            process.wait()
+            remove_non_scad(folder)
