@@ -8,15 +8,17 @@ import os.path
 import sys
 
 if sys.version_info[0] < 3:
+    # python2
     import urllib2 as request
 else:
+    # python3
     import urllib.request as request
 
 
 PAGE_SIZE = 100
 # the rate limit is also 10 per minute and we seem to hit that if we go to more than 9 pages
 # additionally, we some space-constraint in github actions, so we limit it to 2
-MAX_NUMBER_OF_PAGES = 2
+MAX_NUMBER_OF_PAGES = 9
 TERM = "language:openscad"
 
 
