@@ -12,6 +12,7 @@ module Language.OpenSCAD
     , Object(..)
       -- * Expressions
     , Expr(..)
+    , expression
     , Argument(..)
     , Range(..)
     ) where

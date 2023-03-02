@@ -30,9 +30,12 @@ getTests = do
 roundTripTests :: TestTree
 roundTripTests = testGroup "roundtrip tests"
   [ roundtrip "ident" ident
+  , roundtrip "expression" expression
   ]
  where
+   parse :: Parser a -> String -> Result a 
    parse p = parseString p mempty
+   render :: PP.Pretty a => a -> String
    render = PP.renderString . PP.layoutCompact . PP.pretty
    roundtrip name p = QC.testProperty name $ \e -> parse p (render e) `isSuccess` e
 
