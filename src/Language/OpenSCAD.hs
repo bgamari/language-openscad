@@ -20,6 +20,7 @@ import Control.Applicative
 import Control.Monad (void)
 import Data.Char (ord, digitToInt)
 import Data.Foldable (foldr')
+import Data.Functor.Identity (Identity(..))
 import Data.List (foldl')
 import Data.Maybe
 import qualified Data.Scientific as Sci
@@ -133,7 +134,46 @@ data Expr
     | EAnd Expr Expr
     | ETernary Expr Expr Expr
     | EParen Expr
-    deriving (Show)
+    deriving (Show, Eq, Generic)
+
+instance QC.Arbitrary Expr where
+  arbitrary = 
+    let
+      arbitraryExpr' :: Int -> Maybe Assoc -> Int -> QC.Gen Expr
+      arbitraryExpr' p mAssoc n
+        | n <= 0 = QC.oneof
+            [ EBool <$> QC.arbitrary
+            , EString <$> QC.arbitrary
+            , EVar <$> QC.arbitrary
+            , ENum <$> (QC.arbitrary `QC.suchThat` (>= 0))
+            ]
+        | otherwise = QC.oneof $ 
+            [ EParen <$> QC.resize (n-1) QC.arbitrary
+            , do
+                l <- QC.choose (0,n)
+                EVec <$> QC.vectorOf l (QC.resize (n `div` l) QC.arbitrary)
+            , ERange <$> QC.resize (n - 1) QC.arbitrary
+            , do
+                l <- QC.choose (0,n)
+                EFunc <$> QC.arbitrary <*> QC.vectorOf l (QC.resize (n `div` l) QC.arbitrary)
+            ] ++ catMaybes
+            [ genOp p' op
+            | (p',ops) <- zip (reverse [1 .. length opTable']) opTable'
+            , (_,op) <- ops
+            ]
+        where
+          genOp p' op = case (op) of
+            Prefix (Identity c)
+              | p' > p -> Just $ c <$> subExpr Nothing (n - 1)
+            Postfix (Identity c)
+              | p' > p -> Just $ c <$> subExpr Nothing (n - 1)
+            Infix (Identity c) assoc'
+              | p' > p || p' == p && maybe True (== assoc') mAssoc ->
+              Just $ c <$> subExpr (Just assoc') (n `div` 2) <*> subExpr (Just assoc') (n `div` 2) 
+            _ -> Nothing
+           where subExpr = arbitraryExpr' (p' + 1)
+    in QC.sized (arbitraryExpr' 0 Nothing)
+  shrink = QC.genericShrink
 
 instance PP.Pretty Expr where
   pretty e = case e of
@@ -311,6 +351,16 @@ expression =
 
 opTable :: [[Operator Parser Expr]]
 opTable =
+  let mkParser (name, op) = case op of
+        Infix (Identity fun) assoc -> Infix (fun <$ reservedOp name) assoc
+        Prefix (Identity fun) -> Prefix (fun <$ reservedOp name) 
+        Postfix (Identity fun) -> Postfix (fun <$ reservedOp name) 
+  in fmap mkParser <$> opTable'
+  where
+    reservedOp name = reserve emptyOps name
+
+opTable' :: [[(String,Operator Identity Expr)]]
+opTable' =
     [ [ prefix "-" ENegate, prefix "+" id, prefix "!" ENot ]
     , [ binary "*" EMult AssocLeft, binary "/" EDiv AssocLeft, binary "%" EMod AssocLeft ]
     , [ binary "+" EPlus AssocLeft, binary "-" EMinus AssocLeft ]
@@ -324,9 +374,8 @@ opTable =
     , [ binary "||" EOr AssocLeft, binary "&&" EAnd AssocLeft ]
     ]
   where
-    binary  name fun assoc = Infix (fun <$ reservedOp name) assoc
-    prefix  name fun       = Prefix (fun <$ reservedOp name)
-    reservedOp name = reserve emptyOps name
+    binary  name fun assoc = (name, Infix (Identity fun) assoc)
+    prefix  name fun       = (name, Prefix (Identity fun))
 
 -- | Parse a comment
 comment :: Parser String
