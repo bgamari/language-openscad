@@ -35,9 +35,9 @@ roundTripTests = testGroup "roundtrip tests"
   , roundtrip "topLevel" topLevel
   ]
  where
-   parse :: Parser a -> String -> Result a 
+   parse :: HasCallStack => Parser a -> String -> Result a 
    parse p = parseString p mempty
-   render :: PP.Pretty a => a -> String
+   render :: (HasCallStack, PP.Pretty a) => a -> String
    render = PP.renderString . PP.layoutCompact . PP.pretty
    roundtrip name p = QC.testProperty name $ \e -> parse p (render e) `isSuccess` e
 
