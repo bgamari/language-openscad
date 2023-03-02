@@ -1,17 +1,22 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 import Language.OpenSCAD
 import qualified Data.ByteString as BS
 import qualified Data.Text as T
+import qualified Data.Text.Prettyprint.Doc as PP
+import qualified Data.Text.Prettyprint.Doc.Render.String as PP
 import System.FilePath
-import Test.Tasty
-import Test.Tasty.Silver
 import Text.Show.Pretty
+import Text.Trifecta hiding (ident)
+import Test.Tasty
+import qualified Test.Tasty.QuickCheck as QC
+import Test.Tasty.Silver
 
 main :: IO ()
 main = do
     testTree <- getTests
-    defaultMain testTree
+    defaultMain $ testGroup "tests" [testTree, roundTripTests]
 
 getTests :: IO TestTree
 getTests = do
@@ -21,6 +26,19 @@ getTests = do
         | file <- cases
         , let base = takeBaseName file
         ]
+
+roundTripTests :: TestTree
+roundTripTests = testGroup "roundtrip tests"
+  [ roundtrip "ident" ident
+  ]
+ where
+   parse p = parseString p mempty
+   render = PP.renderString . PP.layoutCompact . PP.pretty
+   roundtrip name p = QC.testProperty name $ \e -> parse p (render e) `isSuccess` e
+
+isSuccess :: Eq a => Result a -> a -> Bool
+(Success a) `isSuccess` b = a == b
+_ `isSuccess` _ = False
 
 dumpScad :: FilePath -> IO String
 dumpScad file = do

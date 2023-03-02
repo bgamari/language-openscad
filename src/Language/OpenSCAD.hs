@@ -24,6 +24,8 @@ import qualified Data.Scientific as Sci
 import qualified Data.CharSet as CS
 import qualified Data.CharSet.Unicode as CS
 import Data.Monoid ((<>))
+import qualified Data.Text.Prettyprint.Doc as PP
+import qualified Test.QuickCheck as QC
 import Text.Trifecta hiding (ident)
 import Text.Parser.Expression
 import qualified Data.ByteString.Char8 as BS
@@ -33,13 +35,30 @@ import Text.Parser.Token.Style (emptyOps)
 newtype Ident = Ident String
               deriving (Show, Eq, Ord)
 
+instance PP.Pretty Ident where
+  pretty (Ident i) = PP.pretty i
+
+instance QC.Arbitrary Ident where
+  arbitrary = do
+    c <- QC.elements $ CS.toList ident1Chars
+    l <- QC.getSize
+    rest <- QC.vectorOf l . QC.elements $ CS.toList identChars
+    pure $ Ident (c:rest)
+  shrink (Ident s) = case s of
+    c1 : c2 : cs ->
+      fmap Ident $ [c1:cs] <> [c2:cs | c2 `CS.member` ident1Chars]
+    _ -> mempty
+
 identChars :: CS.CharSet
 identChars = CS.letter <> CS.decimalNumber <> CS.fromList "_"
+
+ident1Chars :: CS.CharSet
+ident1Chars = CS.fromList "$_" <> CS.letter
 
 -- | Parse an identifier
 ident :: Parser Ident
 ident = token $ do
-    c <- oneOfSet $ CS.fromList "$_" <> CS.letter
+    c <- oneOfSet ident1Chars
     rest <- many $ oneOfSet identChars
     return $ Ident (c:rest)
 

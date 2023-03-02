@@ -25,7 +25,9 @@ library
                        charset >= 0.3 && < 0.4,
                        parsers >= 0.12 && <0.13,
                        scientific >= 0.3,
-                       bytestring >=0.10 && <0.11
+                       bytestring >=0.10 && <0.11,
+                       prettyprinter >= 1.2,
+                       QuickCheck >= 2.13 && <2.14
   hs-source-dirs:      src
   default-language:    Haskell2010
 
@@ -37,9 +39,13 @@ test-suite test-parse-openscad
                        bytestring,
                        filepath,
                        pretty-show,
+                       prettyprinter,
+                       QuickCheck,
                        text,
+                       trifecta,
                        tasty,
                        tasty-silver,
+                       tasty-quickcheck,
                        language-openscad
   default-language:    Haskell2010
 
