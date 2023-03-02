@@ -28,7 +28,7 @@ import qualified Data.CharSet.Unicode as CS
 import Data.Monoid ((<>))
 import qualified Data.Text.Prettyprint.Doc as PP
 import Data.Text.Prettyprint.Doc ((<+>))
-import GHC.Generics (Generic(..))
+import GHC.Generics (Generic(..), Generic1(..))
 import qualified Test.QuickCheck as QC
 import Text.Trifecta hiding (ident)
 import Text.Parser.Expression
@@ -177,7 +177,10 @@ instance PP.Pretty Expr where
 -- | @Range start end step@ denotes a list starting at @start@ and
 -- stopping at @end@ with increments of @step@.
 data Range a = Range a a (Maybe a)
-             deriving (Show)
+             deriving (Show, Eq, Generic1)
+
+instance QC.Arbitrary a => QC.Arbitrary (Range a) where
+  arbitrary = Range <$> QC.arbitrary <*> QC.arbitrary <*> QC.arbitrary
 
 instance PP.Pretty a => PP.Pretty (Range a) where
   pretty (Range start stop step) =
