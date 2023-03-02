@@ -246,7 +246,7 @@ equals = symbolic '='
 refArguments :: Parser [Argument Expr]
 refArguments = list <?> "argument list"
   where
-    list = parens $ commaSep $ namedArg <|> arg
+    list = parens $ commaSep $ try namedArg <|> arg
 
     namedArg = do
       name <- try $ ident <* equals
