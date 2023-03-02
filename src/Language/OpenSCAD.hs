@@ -130,6 +130,11 @@ data Expr
 data Range a = Range a a (Maybe a)
              deriving (Show)
 
+instance PP.Pretty a => PP.Pretty (Range a) where
+  pretty (Range start stop step) =
+    PP.encloseSep PP.lbracket PP.rbracket PP.colon
+    . fmap PP.pretty
+    $ [start, stop] <> maybe [] pure step
 
 sepByTill :: Parser delim -> Parser end -> Parser a -> Parser [a]
 sepByTill delim end parser = (end *> return []) <|> go []
