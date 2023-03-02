@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -10,6 +11,7 @@ module Language.OpenSCAD
     , ident
     , TopLevel(..)
     , Object(..)
+    , object
       -- * Expressions
     , Expr(..)
     , expression
@@ -21,6 +23,7 @@ import Control.Applicative
 import Control.Monad (void)
 import Data.Char (ord, digitToInt)
 import Data.Foldable (foldr')
+import Data.Function (fix)
 import Data.Functor.Identity (Identity(..))
 import Data.List (foldl')
 import Data.Maybe
@@ -106,7 +109,86 @@ data Object
               , funcArgs     :: [Ident]
               , funcBody     :: Expr
               }
-    deriving (Show)
+    deriving (Show, Generic, Eq)
+
+instance QC.Arbitrary Object where
+  arbitrary = QC.sized $ fix $ \rec n -> QC.oneof $
+    [ do
+        l <- QC.choose (0, n)
+        let n' = n `div` (2 * max l 1)
+        Module
+          <$> QC.arbitrary
+          <*> QC.vectorOf l (QC.resize n' QC.arbitrary)
+          <*> QC.resize n' QC.arbitrary
+    ] <> mconcat [
+    [ ForLoop <$> QC.arbitrary <*> QC.resize (n `div` 2) QC.arbitrary <*> rec (n `div` 2)
+    , do
+        l <- QC.choose (0, n)
+        let n' = n `div` max l 1
+        Objects <$> QC.vectorOf l (rec n')
+    -- FIXME: nested if-else gives issues
+    -- , let n' = n `div` 3
+    --   in If <$> QC.resize n' QC.arbitrary <*> rec n' <*> QC.resize n' QC.arbitrary
+    , BackgroundMod <$> rec (n-1)
+    , DebugMod <$> rec (n-1)
+    , RootMod <$> rec (n-1)
+    , DisableMod <$> rec (n-1)
+    , do
+        l <- QC.choose (0, n)
+        l' <- QC.choose (0, n)
+        let n' = n `div` (max l 1 * max l' 1)
+        ModuleDef
+          <$> QC.arbitrary
+          <*> QC.vectorOf l ((,) <$> QC.arbitrary <*> QC.resize n' QC.arbitrary)
+          <*> QC.vectorOf l' (rec n')
+    , VarDef <$> QC.arbitrary <*> QC.resize (n-1) QC.arbitrary
+    , FuncDef <$> QC.arbitrary <*> QC.listOf QC.arbitrary <*> QC.resize (n-1) QC.arbitrary
+    ] | n > 0
+    ]
+  shrink = QC.genericShrink
+
+instance PP.Pretty Object where
+  pretty v = case v of
+    Module i args mBody ->
+      PP.pretty i
+      <> PP.tupled (PP.pretty <$> args)
+      <> maybe PP.semi PP.pretty mBody 
+    ForLoop i e o ->
+      "for"
+      <> PP.parens (PP.pretty i <> "=" <> PP.pretty e)
+      <> PP.pretty o
+    Objects os -> 
+      PP.braces . PP.vsep $ PP.pretty <$> os
+    If c t me ->
+      "if"
+      <+> PP.parens (PP.pretty c)
+      <+> PP.pretty t
+      <+> maybe mempty (("else" <+>) . PP.pretty) me
+    BackgroundMod o ->
+      "%" <> PP.pretty o
+    DebugMod o ->
+      "#" <> PP.pretty o
+    RootMod o ->
+      "!" <> PP.pretty o
+    DisableMod o ->
+      "*" <> PP.pretty o
+    ModuleDef { moduleName, moduleArgs, moduleBody } -> 
+      "module"
+      <+> PP.pretty moduleName
+      <> PP.tupled ((\(i,mV) -> PP.pretty i <> maybe mempty (\v -> PP.equals <> PP.pretty v) mV)<$> moduleArgs)
+      <+> PP.braces (PP.vsep $ PP.pretty <$> moduleBody)
+    VarDef { varName, varValue } -> 
+      PP.pretty varName
+      <> PP.equals
+      <> PP.pretty varValue
+      <> PP.semi
+    FuncDef { funcName, funcArgs, funcBody } -> 
+      "function"
+      <> PP.pretty funcName
+      <> PP.tupled (PP.pretty <$> funcArgs)
+      <> PP.equals
+      <> PP.pretty funcBody
+      <> PP.semi
 
 -- | An OpenSCAD expression
 data Expr
