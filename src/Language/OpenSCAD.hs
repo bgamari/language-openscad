@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -27,6 +28,7 @@ import qualified Data.CharSet.Unicode as CS
 import Data.Monoid ((<>))
 import qualified Data.Text.Prettyprint.Doc as PP
 import Data.Text.Prettyprint.Doc ((<+>))
+import GHC.Generics (Generic(..))
 import qualified Test.QuickCheck as QC
 import Text.Trifecta hiding (ident)
 import Text.Parser.Expression
@@ -67,7 +69,14 @@ ident = token $ do
 -- | An item in an argument list
 data Argument a = Argument a            -- ^ Just a plain value
                 | NamedArgument Ident a -- ^ A named argument
-                deriving (Show)
+                deriving (Show, Eq, Generic)
+
+instance QC.Arbitrary a => QC.Arbitrary (Argument a) where
+  arbitrary = QC.oneof
+    [ Argument <$> QC.arbitrary
+    , NamedArgument <$> QC.arbitrary <*> QC.arbitrary
+    ]
+  shrink = QC.genericShrink
 
 instance PP.Pretty a => PP.Pretty (Argument a) where
   pretty v = case v of
