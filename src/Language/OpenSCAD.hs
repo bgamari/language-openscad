@@ -18,6 +18,7 @@ module Language.OpenSCAD
 import Control.Applicative
 import Control.Monad (void)
 import Data.Char (ord, digitToInt)
+import Data.Foldable (foldr')
 import Data.List (foldl')
 import Data.Maybe
 import qualified Data.Scientific as Sci
@@ -124,6 +125,45 @@ data Expr
     | ETernary Expr Expr Expr
     | EParen Expr
     deriving (Show)
+
+instance PP.Pretty Expr where
+  pretty e = case e of
+    EVar i -> PP.pretty i
+    EIndex e1 idx -> PP.pretty e1 <> PP.brackets (PP.pretty idx)
+    ENum d -> PP.pretty d
+    EVec es -> PP.list (PP.pretty <$> es)
+    ERange r -> PP.pretty r
+    EString s ->
+      let escape c acc =
+            if c `elem` ("\"\n\t\\\r" :: [Char])
+              then '\\' : c : acc
+              else c : acc
+      in PP.dquotes $ PP.pretty (foldr' escape "" s)
+    EBool b -> case b of
+      True -> "true"
+      False -> "false"
+    EFunc name args -> PP.pretty name <> PP.tupled (PP.pretty <$> args)
+    ENegate e1 -> prefix "-" e1
+    EPlus e1 e2 -> binary "+" e1 e2
+    EMinus e1 e2 -> binary "-" e1 e2
+    EMult e1 e2 -> binary "*" e1 e2
+    EDiv e1 e2 -> binary "/" e1 e2
+    EMod e1 e2 -> binary "%" e1 e2
+    EEquals e1 e2 -> binary "==" e1 e2
+    ENotEquals e1 e2 -> binary "!=" e1 e2
+    EGT e1 e2 -> binary ">" e1 e2
+    EGE e1 e2 -> binary ">=" e1 e2
+    ELT e1 e2 -> binary "<" e1 e2
+    ELE e1 e2 -> binary "<=" e1 e2
+    ENot e1 -> prefix "!"  e1
+    EOr e1 e2 -> binary "||" e1 e2
+    EAnd e1 e2 -> binary "&&" e1 e2
+    ETernary e1 e2 e3 -> ternary "?" ":" e1 e2 e3
+    EParen e1 -> PP.parens $ PP.pretty e1
+   where
+    prefix op e1 = op <+> PP.pretty e1 -- FIXME: use `<>` instead, fails atm
+    binary op e1 e2 = PP.pretty e1 <+> op <+> PP.pretty e2
+    ternary op1 op2 e1 e2 e3 = PP.pretty e1 <+> op1 <+> PP.pretty e2 <+> op2 <+> PP.pretty e3
 
 -- | @Range start end step@ denotes a list starting at @start@ and
 -- stopping at @end@ with increments of @step@.
