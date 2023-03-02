@@ -32,6 +32,7 @@ roundTripTests = testGroup "roundtrip tests"
   [ roundtrip "ident" ident
   , roundtrip "expression" expression
   , roundtrip "object" object
+  , roundtrip "topLevel" topLevel
   ]
  where
    parse :: Parser a -> String -> Result a 

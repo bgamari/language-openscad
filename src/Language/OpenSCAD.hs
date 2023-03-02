@@ -10,6 +10,7 @@ module Language.OpenSCAD
     , Ident(..)
     , ident
     , TopLevel(..)
+    , topLevel
     , Object(..)
     , object
       -- * Expressions
@@ -555,7 +556,21 @@ object = spaces >> choice
 data TopLevel = TopLevelScope Object
               | UseDirective String
               | IncludeDirective String
-              deriving (Show)
+              deriving (Show, Eq, Generic)
+
+instance QC.Arbitrary TopLevel where
+  arbitrary = QC.oneof
+    [ TopLevelScope <$> QC.arbitrary
+    , UseDirective <$> (QC.arbitrary `QC.suchThat` all (/= '>'))
+    , IncludeDirective <$> (QC.arbitrary `QC.suchThat` all (/= '>'))
+    ]
+  shrink = QC.genericShrink
+
+instance PP.Pretty TopLevel where
+  pretty v = case v of
+    TopLevelScope o -> PP.pretty o
+    IncludeDirective s -> "include" <> PP.angles (PP.pretty s)
+    UseDirective s -> "use" <> PP.angles (PP.pretty s)
 
 -- | Parse the top-level definitions of an OpenSCAD source file
 topLevel :: Parser TopLevel
