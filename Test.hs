@@ -115,6 +115,23 @@ if (true) {
     , testFormat 80 [s|
 *myModule();|]
     ]
+  , testGroup "ModuleDef"
+    [ testFormat 80 [s|
+module myModule() {}|]
+    , testFormat 10 [s|
+module myModule() {}|]
+    , testFormat 80 [s|
+module myModule(arg1, arg2, arg3 = true) {}|]
+    , testFormat 10 [s|
+module myModule( arg1
+               , arg2
+               , arg3 = true ) {}|]
+    , testFormat 80 [s|
+module myModule() {
+  myModule2();
+  myModule2();
+}|]
+    ]
   ]
  where
    testFormat :: HasCallStack => Int -> String -> TestTree

@@ -25,6 +25,7 @@ import Control.Monad (void)
 import Data.Char (ord, digitToInt)
 import Data.Foldable (foldr')
 import Data.Function (fix)
+import Data.Functor ((<&>))
 import Data.Functor.Identity (Identity(..))
 import Data.List (foldl')
 import Data.Maybe
@@ -189,8 +190,18 @@ instance PP.Pretty Object where
     ModuleDef { moduleName, moduleArgs, moduleBody } -> 
       "module"
       <+> PP.pretty moduleName
-      <> PP.tupled ((\(i,mV) -> PP.pretty i <> maybe mempty (\v -> PP.equals <> PP.pretty v) mV)<$> moduleArgs)
-      <+> PP.braces (PP.vsep $ PP.pretty <$> moduleBody)
+      <> (if null moduleArgs
+           then PP.lparen <> PP.rparen
+           else PP.align . PP.tupled $ moduleArgs <&> \(i,mV) ->
+             PP.pretty i <> maybe mempty (\v -> PP.space <> PP.equals <+> PP.pretty v) mV
+         )
+      <> (case moduleBody of
+            [] -> PP.space <> PP.lbrace <> PP.rbrace
+            _ -> PP.space
+              <> PP.enclose (PP.lbrace <> PP.hardline)
+                            (PP.hardline <> PP.rbrace)
+                   (PP.indent 2 . PP.vcat $ PP.pretty <$> moduleBody)
+         )
     VarDef { varName, varValue } -> 
       PP.pretty varName
       <> PP.equals
