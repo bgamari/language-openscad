@@ -78,6 +78,13 @@ myModule( arg1
 myModule()
   myModule2();|]
     ]
+  , testGroup "ForLoop"
+    [ testFormat 80 [s|
+for(myVar = 1.0) myModule();|]
+    , testFormat 20 [s|
+for(myVar = 1.0)
+  myModule();|]
+    ]
   ]
  where
    testFormat :: HasCallStack => Int -> String -> TestTree

@@ -160,8 +160,8 @@ instance PP.Pretty Object where
                mBody 
     ForLoop i e o ->
       "for"
-      <> PP.parens (PP.pretty i <> "=" <> PP.pretty e)
-      <> PP.pretty o
+      <> PP.parens (PP.pretty i <+> "=" <+> PP.pretty e)
+      <> PP.nest 2 (PP.softline <> PP.pretty o)
     Objects os -> 
       PP.braces . PP.vsep $ PP.pretty <$> os
     If c t me ->
