@@ -204,8 +204,8 @@ instance PP.Pretty Object where
          )
     VarDef { varName, varValue } -> 
       PP.pretty varName
-      <> PP.equals
-      <> PP.pretty varValue
+      <+> PP.equals
+      <+> PP.pretty varValue
       <> PP.semi
     FuncDef { funcName, funcArgs, funcBody } -> 
       "function"

@@ -132,6 +132,10 @@ module myModule() {
   myModule2();
 }|]
     ]
+  , testGroup "VarDef"
+    [ testFormat 80 [s|
+myVar = true;|]
+    ]
   ]
  where
    testFormat :: HasCallStack => Int -> String -> TestTree
