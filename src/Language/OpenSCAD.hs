@@ -128,9 +128,10 @@ instance QC.Arbitrary Object where
         l <- QC.choose (0, n)
         let n' = n `div` max l 1
         Objects <$> QC.vectorOf l (rec n')
-    -- FIXME: nested if-else gives issues
-    -- , let n' = n `div` 3
-    --   in If <$> QC.resize n' QC.arbitrary <*> rec n' <*> QC.resize n' QC.arbitrary
+    , let n' = n `div` 3
+      -- TODO: Generate `if-then` without `else`, such that there are no nested
+      -- `if-then`s. That's an OpenSCAD quirk
+      in If <$> QC.resize n' QC.arbitrary <*> rec n' <*> (Just <$> QC.resize n' QC.arbitrary)
     , BackgroundMod <$> rec (n-1)
     , DebugMod <$> rec (n-1)
     , RootMod <$> rec (n-1)
