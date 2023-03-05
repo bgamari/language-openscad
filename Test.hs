@@ -20,7 +20,7 @@ import Test.Tasty.Silver
 main :: IO ()
 main = do
     testTree <- getTests
-    defaultMain $ testGroup "tests" [testTree, roundTripTests, prettyTests]
+    defaultMain $ testGroup "tests" [testTree, roundTripTests, prettyTests, parseTests]
 
 getTests :: IO TestTree
 getTests = do
@@ -264,3 +264,13 @@ myVar
      Right tls -> assertFailure $
       "Parse failure: expected single TopLevel but got:\n" <> show (PP.vsep $ PP.pretty <$> tls)
 
+parseTests :: TestTree
+parseTests = testGroup "parse tests"
+  [ testParse expression "a[b]" $ EIndex (EVar (Ident "a")) (EVar (Ident "b"))
+  , testParse expression "a[b][c]" $ EIndex (EIndex (EVar (Ident "a")) (EVar (Ident "b"))) (EVar (Ident "c"))
+  ]
+  where
+    testParse :: (Eq a, Show a) => Parser a -> String -> a -> TestTree
+    testParse p s v = testCase s $ case parseString p mempty s of
+      Failure e -> assertFailure $ "Parse failure: " <> show e
+      Success v' -> v' @?= v

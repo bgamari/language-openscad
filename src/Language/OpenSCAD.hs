@@ -273,8 +273,7 @@ instance QC.Arbitrary Expr where
               , do
                   l <- QC.choose (0,n)
                   EFunc <$> QC.arbitrary <*> QC.vectorOf l (QC.resize (n `div` l) QC.arbitrary)
-              -- FIXME: gives errors
-              -- , EIndex <$> QC.resize (n`div`2) QC.arbitrary <*> QC.resize (n`div`2) QC.arbitrary
+              , EIndex <$> QC.resize (n`div`2) (QC.oneof $ simpleTerms <> recursiveTerms) <*> QC.resize (n`div`2) QC.arbitrary
               ]
           ops
             = [ ETernary <$> QC.resize (n`div`3) (QC.oneof simpleTerms) <*> QC.resize (n`div`3) QC.arbitrary <*> QC.resize (n`div`3) QC.arbitrary | p == 0
@@ -449,9 +448,9 @@ term = do
     , ENum <$> double'
     , EParen <$> parens expression
     ]
-  idx <- optional $ brackets expression <?> "index expression"
+  idxs <- many $ brackets expression <?> "index expression"
   spaces
-  return $ maybe e (e `EIndex`) idx
+  return $ foldl' EIndex e idxs
   where
     funcRef = do
       name <- ident
