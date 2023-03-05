@@ -285,7 +285,16 @@ instance QC.Arbitrary Expr where
             where
               genOp p' op = case op of
                 Prefix (OperatorParser c _)
-                  | p' > p -> Just $ c <$> subExpr Nothing (n - 1)
+                  | p' > p -> Just $ (c <$> subExpr Nothing (n - 1)) `QC.suchThat` \e ->
+                      -- these cases would be parsed as negative numbers instead
+                      case e of
+                        ENegate e' ->
+                          let f e'' = case e'' of
+                                ENum _ -> False
+                                EIndex e''' _ -> f e'''
+                                _ -> True
+                          in f e'
+                        _ -> True
                 Postfix (OperatorParser c _)
                   | p' > p -> Just $ c <$> subExpr Nothing (n - 1)
                 Infix (OperatorParser c _) assoc'
@@ -340,7 +349,7 @@ instance PP.Pretty Expr where
     ETernary e1 e2 e3 -> ternary "?" ":" e1 e2 e3
     EParen e1 -> PP.group . PP.align . PP.enclose (PP.flatAlt "( " "(") (PP.flatAlt " )" ")") $ PP.pretty e1
    where
-    prefix op e1 = op <+> PP.pretty e1 -- FIXME: use `<>` instead, fails atm
+    prefix op e1 = op <> PP.pretty e1
     binary op e1 e2 = PP.align $ PP.pretty e1 <> PP.line <> op <+> PP.pretty e2
     ternary op1 op2 e1 e2 e3 =
       let f s = PP.pretty e1 <> s <> op1 <+> PP.pretty e2 <> s <> op2 <+> PP.pretty e3
@@ -500,7 +509,9 @@ data OperatorParser a = OperatorParser
 
 opTable' :: [[Operator OperatorParser Expr]]
 opTable' =
-    [ [ prefix "-" ENegate, prefix "+" id, prefix "!" ENot ]
+    [ [ Prefix (OperatorParser ENegate (try $ reservedOp "-" >> notFollowedBy double'))
+      , Prefix (OperatorParser id (try $ reservedOp "+" >> notFollowedBy double'))
+      , prefix "!" ENot ]
     , [ binary "*" EMult AssocLeft, binary "/" EDiv AssocLeft, binary "%" EMod AssocLeft ]
     , [ binary "+" EPlus AssocLeft, binary "-" EMinus AssocLeft ]
     , [ binary "==" EEquals AssocLeft

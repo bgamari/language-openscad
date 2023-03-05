@@ -223,7 +223,11 @@ myVar
   = myFunc( arg1
           , arg2 );|]
     , testFormat 80 [s|
-myVar = ! myVar2;|] -- FIXME
+myVar = !myVar2;|]
+    , testFormat 80 [s|
+myVar = -myVar2;|]
+    , testFormat 80 [s|
+myVar = -(myVar2);|]
     , testFormat 80 [s|
 myVar = a + b;|]
     , testFormat 15 [s|
@@ -268,6 +272,13 @@ parseTests :: TestTree
 parseTests = testGroup "parse tests"
   [ testParse expression "a[b]" $ EIndex (EVar (Ident "a")) (EVar (Ident "b"))
   , testParse expression "a[b][c]" $ EIndex (EIndex (EVar (Ident "a")) (EVar (Ident "b"))) (EVar (Ident "c"))
+  , testParse expression "-1" $ ENum (negate 1)
+  , testParse expression "-(1)" $ ENegate (EParen (ENum 1))
+  , testParse expression "+1" $ ENum 1
+  , testParse expression "+(1)" $ EParen (ENum 1)
+  -- Not supported atm
+  -- , testParse expression "--1" $ ENegate (ENum (negate 1))
+  -- , testParse expression "+-1" $ ENum (negate 1)
   ]
   where
     testParse :: (Eq a, Show a) => Parser a -> String -> a -> TestTree
