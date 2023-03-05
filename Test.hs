@@ -135,6 +135,9 @@ module myModule() {
   , testGroup "VarDef"
     [ testFormat 80 [s|
 myVar = true;|]
+    , testFormat 10 [s|
+myVar
+  = true;|]
     ]
   , testGroup "FuncDef"
     [ testFormat 80 [s|
@@ -159,8 +162,8 @@ myVar = 1.0;|]
     , testFormat 80 [s|
 myVar = [true, false];|]
     , testFormat 20 [s|
-myVar = [ true
-        , false ];|]
+myVariables
+  = [aaa, b];|]
     , testFormat 10 [s|
 myVar
   = [ true
@@ -168,9 +171,13 @@ myVar
     ]
     , testFormat 80 [s|
 myVar = [true:false];|]
-    , testFormat 20 [s|
-myVar = [ true
-        : false ];|]
+    , testFormat 25 [s|
+myVariables
+  = [true:false];|]
+    , testFormat 15 [s|
+myVar
+  = [ true
+    : false ];|]
     , testFormat 80 [s|
 myVar = "myString";|]
     , testFormat 80 [s|
@@ -184,22 +191,44 @@ myVar = false;|]
 myVar = myFunc();|]
     , testFormat 80 [s|
 myVar = myFunc(arg1, arg2);|]
+    , testFormat 25 [s|
+myVar
+  = myFunc(arg1, arg2);|]
     , testFormat 20 [s|
-myVar = myFunc( arg1
-              , arg2 );|]
+myVar
+  = myFunc( arg1
+          , arg2 );|]
     , testFormat 80 [s|
 myVar = ! myVar2;|] -- FIXME
     , testFormat 80 [s|
 myVar = a + b;|]
     , testFormat 15 [s|
-myVar = aaaaa
-        + b;|]
+myVariable
+  = aaaaa + b;|]
+    , testFormat 10 [s|
+myVarable
+  = aaaaa
+    + b;|]
     , testFormat 80 [s|
 myVar = a ? b : c;|]
     , testFormat 15 [s|
-myVar = aaaaa
-        ? b
-        : c;|]
+myVar
+  = a ? b : c;|]
+    , testFormat 10 [s|
+myVar
+  = aaaa
+    ? b
+    : c;|]
+    , testFormat 80 [s|
+myVar = (a + b);|]
+    , testFormat 15 [s|
+myVariable
+  = (a + b);|]
+    , testFormat 10 [s|
+myVar
+  = ( aaaaa
+      + b
+      + c );|]
   ]
  where
    testFormat :: HasCallStack => Int -> String -> TestTree

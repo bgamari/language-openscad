@@ -150,7 +150,7 @@ instance QC.Arbitrary Object where
   shrink = QC.genericShrink
 
 instance PP.Pretty Object where
-  pretty v = case v of
+  pretty v = PP.group $ case v of
     Module i args mBody ->
       PP.pretty i
       <> (if null args
@@ -205,10 +205,9 @@ instance PP.Pretty Object where
     VarDef { varName, varValue } -> 
       PP.pretty varName
       <> PP.nest 2
-          (PP.softline
+          ( PP.line
           <> PP.equals
-          <+> PP.pretty varValue
-          <> PP.semi)
+          <+> PP.group (PP.pretty varValue <> PP.semi))
     FuncDef { funcName, funcArgs, funcBody } -> 
       "function"
       <+> PP.pretty funcName
@@ -334,7 +333,7 @@ instance PP.Pretty Expr where
     EOr e1 e2 -> binary "||" e1 e2
     EAnd e1 e2 -> binary "&&" e1 e2
     ETernary e1 e2 e3 -> ternary "?" ":" e1 e2 e3
-    EParen e1 -> PP.parens $ PP.pretty e1
+    EParen e1 -> PP.group . PP.align . PP.enclose (PP.flatAlt "( " "(") (PP.flatAlt " )" ")") $ PP.pretty e1
    where
     prefix op e1 = op <+> PP.pretty e1 -- FIXME: use `<>` instead, fails atm
     binary op e1 e2 = PP.align $ PP.pretty e1 <> PP.softline <> op <+> PP.pretty e2
