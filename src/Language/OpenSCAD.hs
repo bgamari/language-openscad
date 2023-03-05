@@ -280,15 +280,15 @@ instance QC.Arbitrary Expr where
               ] ++ catMaybes
               [ genOp p' op
               | (p',ops) <- zip (reverse [1 .. length opTable']) opTable'
-              , (_,op) <- ops
+              , op <- ops
               ]
             where
-              genOp p' op = case (op) of
-                Prefix (Identity c)
+              genOp p' op = case op of
+                Prefix (OperatorParser c _)
                   | p' > p -> Just $ c <$> subExpr Nothing (n - 1)
-                Postfix (Identity c)
+                Postfix (OperatorParser c _)
                   | p' > p -> Just $ c <$> subExpr Nothing (n - 1)
-                Infix (Identity c) assoc'
+                Infix (OperatorParser c _) assoc'
                   | p' > p || p' == p && maybe True (== assoc') mAssoc ->
                   Just $ c <$> subExpr (Just assoc') (n `div` 2) <*> subExpr (Just assoc') (n `div` 2) 
                 _ -> Nothing
@@ -487,15 +487,18 @@ expression =
 
 opTable :: [[Operator Parser Expr]]
 opTable =
-  let mkParser (name, op) = case op of
-        Infix (Identity fun) assoc -> Infix (fun <$ reservedOp name) assoc
-        Prefix (Identity fun) -> Prefix (fun <$ reservedOp name) 
-        Postfix (Identity fun) -> Postfix (fun <$ reservedOp name) 
+  let mkParser op = case op of
+        Infix (OperatorParser fun p) assoc -> Infix (fun <$ p) assoc
+        Prefix (OperatorParser fun p) -> Prefix (fun <$ p) 
+        Postfix (OperatorParser fun p) -> Postfix (fun <$ p) 
   in fmap mkParser <$> opTable'
-  where
-    reservedOp name = reserve emptyOps name
 
-opTable' :: [[(String,Operator Identity Expr)]]
+data OperatorParser a = OperatorParser
+  { opFun :: a
+  , opParser :: Parser ()
+  }
+
+opTable' :: [[Operator OperatorParser Expr]]
 opTable' =
     [ [ prefix "-" ENegate, prefix "+" id, prefix "!" ENot ]
     , [ binary "*" EMult AssocLeft, binary "/" EDiv AssocLeft, binary "%" EMod AssocLeft ]
@@ -510,8 +513,9 @@ opTable' =
     , [ binary "||" EOr AssocLeft, binary "&&" EAnd AssocLeft ]
     ]
   where
-    binary  name fun assoc = (name, Infix (Identity fun) assoc)
-    prefix  name fun       = (name, Prefix (Identity fun))
+    binary  name fun assoc = Infix (OperatorParser fun (reservedOp name)) assoc
+    prefix  name fun       = Prefix (OperatorParser fun (reservedOp name))
+    reservedOp name = reserve emptyOps name
 
 -- | Parse a comment
 comment :: Parser String
