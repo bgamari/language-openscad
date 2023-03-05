@@ -77,6 +77,16 @@ myModule( arg1
     , testFormat 20 [s|
 myModule()
   myModule2();|]
+    , testFormat 80 [s|
+myModule() { foo(); }|]
+    , testFormat 80 [s|
+myModule() { foo(); bar(); }|]
+    , testFormat 15 [s|
+myModule() {
+  foo();
+  bar();
+  baz();
+}|]
     ]
   , testGroup "ForLoop"
     [ testFormat 80 [s|
@@ -85,8 +95,18 @@ for(myVar = 1.0) myModule();|]
 for(myVar = 1.0)
   myModule();|]
     ]
+    , testFormat 80 [s|
+for(myVar = true) { foo(); bar(); }|]
+    , testFormat 15 [s|
+for(myVar = true) {
+  foo();
+  bar();
+  baz();
+}|]
   , testGroup "Objects"
     [ testFormat 80 [s|
+{ myModule1(); myModule2(); }|]
+    , testFormat 20 [s|
 {
   myModule1();
   myModule2();
@@ -100,6 +120,8 @@ if (true) myModule();|]
 if (true)
   myModule();|]
     , testFormat 80 [s|
+if (true) { myModule(); myModule(); }|]
+    , testFormat 20 [s|
 if (true) {
   myModule();
   myModule();

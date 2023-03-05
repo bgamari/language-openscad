@@ -156,18 +156,20 @@ instance PP.Pretty Object where
       <> (if null args
            then PP.lparen <> PP.rparen
            else PP.align (PP.tupled (PP.pretty <$> args)))
-      <> maybe PP.semi
-               (PP.nest 2 . mappend PP.softline . PP.pretty)
-               mBody 
+      <> case mBody of
+      Nothing -> PP.semi
+      Just os@(Objects _) -> PP.space <> PP.pretty os
+      Just o -> PP.nest 2 $ PP.softline <> PP.pretty o
     ForLoop i e o ->
       "for"
       <> PP.parens (PP.pretty i <+> "=" <+> PP.pretty e)
-      <> PP.nest 2 (PP.softline <> PP.pretty o)
+      <> case o of
+          Objects _ -> PP.space <> PP.pretty o
+          _ -> PP.nest 2 $ PP.softline <> PP.pretty o
     Objects os -> 
-      PP.enclose (PP.lbrace <> PP.hardline) (PP.hardline <> PP.rbrace) 
-        . PP.indent 2
-        . PP.vcat
-        $ PP.pretty <$> os
+      PP.enclose PP.lbrace (PP.line <> PP.rbrace)
+      . PP.nest 2
+      $ PP.line <> PP.vsep (PP.pretty <$> os)
     If c t me ->
       "if"
       <+> PP.parens (PP.pretty c)
