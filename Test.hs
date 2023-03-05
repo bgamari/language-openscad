@@ -1,8 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 import Language.OpenSCAD
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as BS8
+import Data.String.QQ (s)
 import qualified Data.Text as T
 import qualified Data.Text.Prettyprint.Doc as PP
 import qualified Data.Text.Prettyprint.Doc.Render.String as PP
@@ -10,13 +13,14 @@ import System.FilePath
 import Text.Show.Pretty
 import Text.Trifecta hiding (ident)
 import Test.Tasty
+import Test.Tasty.HUnit
 import qualified Test.Tasty.QuickCheck as QC
 import Test.Tasty.Silver
 
 main :: IO ()
 main = do
     testTree <- getTests
-    defaultMain $ testGroup "tests" [testTree, roundTripTests]
+    defaultMain $ testGroup "tests" [testTree, roundTripTests, prettyTests]
 
 getTests :: IO TestTree
 getTests = do
@@ -51,3 +55,17 @@ dumpScad file = do
     case result of
       Left err -> fail err
       Right a  -> return $ ppShow a
+
+prettyTests :: TestTree
+prettyTests = testGroup "pretty tests"
+  []
+ where
+   testFormat :: HasCallStack => Int -> String -> TestTree
+   testFormat w src = testCase src $ case parse (BS8.pack src) of 
+     Left e -> assertFailure $ "Parse failure: " <> e
+     Right [tl] ->
+       let opts = PP.LayoutOptions $ PP.AvailablePerLine w 1
+       in PP.renderString (PP.layoutPretty opts $ PP.pretty tl) @?= src
+     Right tls -> assertFailure $
+      "Parse failure: expected single TopLevel but got:\n" <> show (PP.vsep $ PP.pretty <$> tls)
+

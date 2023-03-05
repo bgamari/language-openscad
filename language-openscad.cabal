@@ -41,9 +41,11 @@ test-suite test-parse-openscad
                        pretty-show,
                        prettyprinter,
                        QuickCheck,
+                       string-qq,
                        text,
                        trifecta,
                        tasty,
+                       tasty-hunit,
                        tasty-silver,
                        tasty-quickcheck,
                        language-openscad
