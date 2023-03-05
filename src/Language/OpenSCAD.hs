@@ -163,7 +163,10 @@ instance PP.Pretty Object where
       <> PP.parens (PP.pretty i <+> "=" <+> PP.pretty e)
       <> PP.nest 2 (PP.softline <> PP.pretty o)
     Objects os -> 
-      PP.braces . PP.vsep $ PP.pretty <$> os
+      PP.enclose (PP.lbrace <> PP.hardline) (PP.hardline <> PP.rbrace) 
+        . PP.indent 2
+        . PP.vcat
+        $ PP.pretty <$> os
     If c t me ->
       "if"
       <+> PP.parens (PP.pretty c)

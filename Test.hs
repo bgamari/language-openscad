@@ -85,6 +85,13 @@ for(myVar = 1.0) myModule();|]
 for(myVar = 1.0)
   myModule();|]
     ]
+  , testGroup "Objects"
+    [ testFormat 80 [s|
+{
+  myModule1();
+  myModule2();
+}|]
+    ]
   ]
  where
    testFormat :: HasCallStack => Int -> String -> TestTree
