@@ -159,13 +159,13 @@ instance PP.Pretty Object where
       <> case mBody of
       Nothing -> PP.semi
       Just os@(Objects _) -> PP.space <> PP.pretty os
-      Just o -> PP.nest 2 $ PP.softline <> PP.pretty o
+      Just o -> PP.nest 2 $ PP.line <> PP.pretty o
     ForLoop i e o ->
       "for"
       <> PP.parens (PP.pretty i <+> "=" <+> PP.pretty e)
       <> case o of
           Objects _ -> PP.space <> PP.pretty o
-          _ -> PP.nest 2 $ PP.softline <> PP.pretty o
+          _ -> PP.nest 2 $ PP.line <> PP.pretty o
     Objects os -> 
       PP.enclose PP.lbrace (PP.line <> PP.rbrace)
       . PP.nest 2
@@ -175,11 +175,11 @@ instance PP.Pretty Object where
       <+> PP.parens (PP.pretty c)
       <> (case t of
             Objects _ -> PP.space <> PP.pretty t
-            _ -> PP.nest 2 (PP.softline <> PP.pretty t)
+            _ -> PP.nest 2 (PP.line <> PP.pretty t)
             )
       <> maybe
            mempty
-           (\e -> PP.softline <> "else" <> PP.softline <> PP.pretty e)
+           (\e -> PP.line <> "else" <> PP.line <> PP.pretty e)
            me
     BackgroundMod o ->
       "%" <> PP.pretty o
@@ -200,8 +200,8 @@ instance PP.Pretty Object where
       <> (case moduleBody of
             [] -> PP.space <> PP.lbrace <> PP.rbrace
             _ -> PP.space
-              <> PP.enclose (PP.lbrace <> PP.hardline)
-                            (PP.hardline <> PP.rbrace)
+              <> PP.enclose (PP.lbrace <> PP.line)
+                            (PP.line <> PP.rbrace)
                    (PP.indent 2 . PP.vcat $ PP.pretty <$> moduleBody)
          )
     VarDef { varName, varValue } -> 
@@ -218,7 +218,7 @@ instance PP.Pretty Object where
            else PP.align . PP.tupled $ PP.pretty <$> funcArgs
          )
       <> PP.nest 2
-          (PP.softline
+          (PP.line
           <> PP.equals
           <+> PP.pretty funcBody
           <> PP.semi)
@@ -338,7 +338,7 @@ instance PP.Pretty Expr where
     EParen e1 -> PP.group . PP.align . PP.enclose (PP.flatAlt "( " "(") (PP.flatAlt " )" ")") $ PP.pretty e1
    where
     prefix op e1 = op <+> PP.pretty e1 -- FIXME: use `<>` instead, fails atm
-    binary op e1 e2 = PP.align $ PP.pretty e1 <> PP.softline <> op <+> PP.pretty e2
+    binary op e1 e2 = PP.align $ PP.pretty e1 <> PP.line <> op <+> PP.pretty e2
     ternary op1 op2 e1 e2 e3 =
       let f s = PP.pretty e1 <> s <> op1 <+> PP.pretty e2 <> s <> op2 <+> PP.pretty e3
       in PP.group $ PP.align (f PP.line) `PP.flatAlt` f PP.space
