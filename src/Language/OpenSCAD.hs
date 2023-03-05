@@ -204,9 +204,11 @@ instance PP.Pretty Object where
          )
     VarDef { varName, varValue } -> 
       PP.pretty varName
-      <+> PP.equals
-      <+> PP.pretty varValue
-      <> PP.semi
+      <> PP.nest 2
+          (PP.softline
+          <> PP.equals
+          <+> PP.pretty varValue
+          <> PP.semi)
     FuncDef { funcName, funcArgs, funcBody } -> 
       "function"
       <+> PP.pretty funcName
@@ -293,7 +295,10 @@ instance PP.Pretty Expr where
     EVar i -> PP.pretty i
     EIndex e1 idx -> PP.pretty e1 <> PP.brackets (PP.pretty idx)
     ENum d -> PP.pretty d
-    EVec es -> PP.list (PP.pretty <$> es)
+    EVec es ->
+      if null es
+        then PP.lbracket <> PP.rbracket
+        else PP.align . PP.list $ PP.pretty <$> es
     ERange r -> PP.pretty r
     EString s ->
       let escape c acc =
@@ -304,7 +309,12 @@ instance PP.Pretty Expr where
     EBool b -> case b of
       True -> "true"
       False -> "false"
-    EFunc name args -> PP.pretty name <> PP.tupled (PP.pretty <$> args)
+    EFunc name args ->
+      PP.pretty name
+      <> (if null args
+           then PP.lparen <> PP.rparen
+           else PP.align . PP.tupled $ (PP.pretty <$> args)
+         )
     ENegate e1 -> prefix "-" e1
     EPlus e1 e2 -> binary "+" e1 e2
     EMinus e1 e2 -> binary "-" e1 e2
@@ -324,8 +334,10 @@ instance PP.Pretty Expr where
     EParen e1 -> PP.parens $ PP.pretty e1
    where
     prefix op e1 = op <+> PP.pretty e1 -- FIXME: use `<>` instead, fails atm
-    binary op e1 e2 = PP.pretty e1 <+> op <+> PP.pretty e2
-    ternary op1 op2 e1 e2 e3 = PP.pretty e1 <+> op1 <+> PP.pretty e2 <+> op2 <+> PP.pretty e3
+    binary op e1 e2 = PP.align $ PP.pretty e1 <> PP.softline <> op <+> PP.pretty e2
+    ternary op1 op2 e1 e2 e3 =
+      let f s = PP.pretty e1 <> s <> op1 <+> PP.pretty e2 <> s <> op2 <+> PP.pretty e3
+      in PP.group $ PP.align (f PP.line) `PP.flatAlt` f PP.space
 
 -- | @Range start end step@ denotes a list starting at @start@ and
 -- stopping at @end@ with increments of @step@.
@@ -337,7 +349,11 @@ instance QC.Arbitrary a => QC.Arbitrary (Range a) where
 
 instance PP.Pretty a => PP.Pretty (Range a) where
   pretty (Range start stop step) =
-    PP.encloseSep PP.lbracket PP.rbracket PP.colon
+    PP.align
+    . PP.group
+    . PP.encloseSep (PP.flatAlt "[ " "[")
+                    (PP.flatAlt " ]" "]")
+                    (PP.flatAlt ": " ":")
     . fmap PP.pretty
     $ [start, stop] <> maybe [] pure step
 

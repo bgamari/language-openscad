@@ -149,6 +149,57 @@ function myFunc( arg1
                , arg2 )
   = true;|]
     ]
+  , testGroup "Expr"
+    [ testFormat 80 [s|
+myVar = myVar2;|]
+    , testFormat 80 [s|
+myVar = myVar2[foo];|]
+    , testFormat 80 [s|
+myVar = 1.0;|]
+    , testFormat 80 [s|
+myVar = [true, false];|]
+    , testFormat 20 [s|
+myVar = [ true
+        , false ];|]
+    , testFormat 10 [s|
+myVar
+  = [ true
+    , false ];|]
+    ]
+    , testFormat 80 [s|
+myVar = [true:false];|]
+    , testFormat 20 [s|
+myVar = [ true
+        : false ];|]
+    , testFormat 80 [s|
+myVar = "myString";|]
+    , testFormat 80 [s|
+myVar = "myString\"";|]
+    -- TODO: string escapings
+    , testFormat 80 [s|
+myVar = true;|]
+    , testFormat 80 [s|
+myVar = false;|]
+    , testFormat 80 [s|
+myVar = myFunc();|]
+    , testFormat 80 [s|
+myVar = myFunc(arg1, arg2);|]
+    , testFormat 20 [s|
+myVar = myFunc( arg1
+              , arg2 );|]
+    , testFormat 80 [s|
+myVar = ! myVar2;|] -- FIXME
+    , testFormat 80 [s|
+myVar = a + b;|]
+    , testFormat 15 [s|
+myVar = aaaaa
+        + b;|]
+    , testFormat 80 [s|
+myVar = a ? b : c;|]
+    , testFormat 15 [s|
+myVar = aaaaa
+        ? b
+        : c;|]
   ]
  where
    testFormat :: HasCallStack => Int -> String -> TestTree
