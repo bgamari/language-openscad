@@ -92,6 +92,19 @@ for(myVar = 1.0)
   myModule2();
 }|]
     ]
+  , testGroup "If"
+    [
+      testFormat 80 [s|
+if (true) myModule();|]
+    , testFormat 20 [s|
+if (true)
+  myModule();|]
+    , testFormat 80 [s|
+if (true) {
+  myModule();
+  myModule();
+}|]
+    ]
   ]
  where
    testFormat :: HasCallStack => Int -> String -> TestTree

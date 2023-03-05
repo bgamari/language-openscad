@@ -170,8 +170,14 @@ instance PP.Pretty Object where
     If c t me ->
       "if"
       <+> PP.parens (PP.pretty c)
-      <+> PP.pretty t
-      <+> maybe mempty (("else" <+>) . PP.pretty) me
+      <> (case t of
+            Objects _ -> PP.space <> PP.pretty t
+            _ -> PP.nest 2 (PP.softline <> PP.pretty t)
+            )
+      <> maybe
+           mempty
+           (\e -> PP.softline <> "else" <> PP.softline <> PP.pretty e)
+           me
     BackgroundMod o ->
       "%" <> PP.pretty o
     DebugMod o ->
