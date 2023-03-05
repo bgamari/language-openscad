@@ -136,6 +136,19 @@ module myModule() {
     [ testFormat 80 [s|
 myVar = true;|]
     ]
+  , testGroup "FuncDef"
+    [ testFormat 80 [s|
+function myFunc() = true;|]
+    , testFormat 10 [s|
+function myFunc()
+  = true;|]
+    , testFormat 80 [s|
+function myFunc(arg1, arg2) = true;|]
+    , testFormat 10 [s|
+function myFunc( arg1
+               , arg2 )
+  = true;|]
+    ]
   ]
  where
    testFormat :: HasCallStack => Int -> String -> TestTree

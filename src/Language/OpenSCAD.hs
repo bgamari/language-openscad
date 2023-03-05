@@ -209,11 +209,16 @@ instance PP.Pretty Object where
       <> PP.semi
     FuncDef { funcName, funcArgs, funcBody } -> 
       "function"
-      <> PP.pretty funcName
-      <> PP.tupled (PP.pretty <$> funcArgs)
-      <> PP.equals
-      <> PP.pretty funcBody
-      <> PP.semi
+      <+> PP.pretty funcName
+      <> (if null funcArgs
+           then PP.lparen <> PP.rparen
+           else PP.align . PP.tupled $ PP.pretty <$> funcArgs
+         )
+      <> PP.nest 2
+          (PP.softline
+          <> PP.equals
+          <+> PP.pretty funcBody
+          <> PP.semi)
 
 -- | An OpenSCAD expression
 data Expr
