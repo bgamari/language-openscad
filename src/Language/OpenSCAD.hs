@@ -200,9 +200,8 @@ instance PP.Pretty Object where
       <> (case moduleBody of
             [] -> PP.space <> PP.lbrace <> PP.rbrace
             _ -> PP.space
-              <> PP.enclose (PP.lbrace <> PP.line)
-                            (PP.line <> PP.rbrace)
-                   (PP.indent 2 . PP.vcat $ PP.pretty <$> moduleBody)
+              <> PP.enclose PP.lbrace (PP.line <> PP.rbrace)
+                   (PP.nest 2 $ PP.line <> PP.vsep (PP.pretty <$> moduleBody))
          )
     VarDef { varName, varValue } -> 
       PP.pretty varName

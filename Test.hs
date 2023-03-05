@@ -149,6 +149,8 @@ module myModule( arg1
                , arg2
                , arg3 = true ) {}|]
     , testFormat 80 [s|
+module myModule() { myModule2(); myModule2(); }|]
+    , testFormat 20 [s|
 module myModule() {
   myModule2();
   myModule2();
