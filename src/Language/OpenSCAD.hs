@@ -255,43 +255,45 @@ instance QC.Arbitrary Expr where
   arbitrary = 
     let
       arbitraryExpr' :: Int -> Maybe Assoc -> Int -> QC.Gen Expr
-      arbitraryExpr' p mAssoc n
-        | n <= 0 = QC.oneof
-            [ EBool <$> QC.arbitrary
-            , EString <$> QC.arbitrary
-            , EVar <$> QC.arbitrary
-            , ENum <$> (QC.arbitrary `QC.suchThat` (>= 0))
-            ]
-        | otherwise = QC.oneof $ 
-            [ EParen <$> QC.resize (n-1) QC.arbitrary
-            , do
-                l <- QC.choose (0,n)
-                EVec <$> QC.vectorOf l (QC.resize (n `div` l) QC.arbitrary)
-            , ERange <$> QC.resize (n - 1) QC.arbitrary
-            , do
-                l <- QC.choose (0,n)
-                EFunc <$> QC.arbitrary <*> QC.vectorOf l (QC.resize (n `div` l) QC.arbitrary)
-            -- FIXME: gives errors
-            -- , EIndex <$> QC.resize (n`div`2) QC.arbitrary <*> QC.resize (n`div`2) QC.arbitrary
-            -- FIXME: #1 must be a term, not an expression
-            -- , ETernary <$> QC.resize (n`div`3) QC.arbitrary <*> QC.resize (n`div`3) QC.arbitrary <*> QC.resize (n`div`3) QC.arbitrary
-            , EParen <$> QC.resize (n - 1) QC.arbitrary
-            ] ++ catMaybes
-            [ genOp p' op
-            | (p',ops) <- zip (reverse [1 .. length opTable']) opTable'
-            , (_,op) <- ops
-            ]
-        where
-          genOp p' op = case (op) of
-            Prefix (Identity c)
-              | p' > p -> Just $ c <$> subExpr Nothing (n - 1)
-            Postfix (Identity c)
-              | p' > p -> Just $ c <$> subExpr Nothing (n - 1)
-            Infix (Identity c) assoc'
-              | p' > p || p' == p && maybe True (== assoc') mAssoc ->
-              Just $ c <$> subExpr (Just assoc') (n `div` 2) <*> subExpr (Just assoc') (n `div` 2) 
-            _ -> Nothing
-           where subExpr = arbitraryExpr' (p' + 1)
+      arbitraryExpr' p mAssoc n = 
+        let
+          simpleTerms
+            = [ EBool <$> QC.arbitrary
+              , EString <$> QC.arbitrary
+              , EVar <$> QC.arbitrary
+              , ENum <$> (QC.arbitrary `QC.suchThat` (>= 0))
+              ]
+          recursiveTerms
+            = [ EParen <$> QC.resize (n-1) QC.arbitrary
+              , do
+                  l <- QC.choose (0,n)
+                  EVec <$> QC.vectorOf l (QC.resize (n `div` l) QC.arbitrary)
+              , ERange <$> QC.resize (n - 1) QC.arbitrary
+              , do
+                  l <- QC.choose (0,n)
+                  EFunc <$> QC.arbitrary <*> QC.vectorOf l (QC.resize (n `div` l) QC.arbitrary)
+              -- FIXME: gives errors
+              -- , EIndex <$> QC.resize (n`div`2) QC.arbitrary <*> QC.resize (n`div`2) QC.arbitrary
+              ]
+          ops
+            = [ ETernary <$> QC.resize (n`div`3) (QC.oneof simpleTerms) <*> QC.resize (n`div`3) QC.arbitrary <*> QC.resize (n`div`3) QC.arbitrary | p == 0
+              ] ++ catMaybes
+              [ genOp p' op
+              | (p',ops) <- zip (reverse [1 .. length opTable']) opTable'
+              , (_,op) <- ops
+              ]
+            where
+              genOp p' op = case (op) of
+                Prefix (Identity c)
+                  | p' > p -> Just $ c <$> subExpr Nothing (n - 1)
+                Postfix (Identity c)
+                  | p' > p -> Just $ c <$> subExpr Nothing (n - 1)
+                Infix (Identity c) assoc'
+                  | p' > p || p' == p && maybe True (== assoc') mAssoc ->
+                  Just $ c <$> subExpr (Just assoc') (n `div` 2) <*> subExpr (Just assoc') (n `div` 2) 
+                _ -> Nothing
+                where subExpr = arbitraryExpr' (p' + 1)
+        in if n <= 0 then QC.oneof simpleTerms else QC.oneof $ recursiveTerms <> ops   
     in QC.sized (arbitraryExpr' 0 Nothing)
   shrink = QC.genericShrink
 
