@@ -113,8 +113,7 @@ for(myVar = true) {
 }|]
     ]
   , testGroup "If"
-    [
-      testFormat 80 [s|
+    [ testFormat 80 [s|
 if (true) myModule();|]
     , testFormat 20 [s|
 if (true)
@@ -126,6 +125,12 @@ if (true) {
   myModule();
   myModule();
 }|]
+    , testFormat 80 [s|
+if (true) if (true) foo();|]
+    , testFormat 80 [s|
+if (true) { if (true) foo(); else bar(); }|]
+    , testFormat 80 [s|
+if (true) { if (true) foo(); } else bar();|]
     ]
   , testGroup "*Mod"
     [ testFormat 80 [s|

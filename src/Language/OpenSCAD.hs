@@ -129,9 +129,9 @@ instance QC.Arbitrary Object where
         let n' = n `div` max l 1
         Objects <$> QC.vectorOf l (rec n')
     , let n' = n `div` 3
-      -- TODO: Generate `if-then` without `else`, such that there are no nested
-      -- `if-then`s. That's an OpenSCAD quirk
-      in If <$> QC.resize n' QC.arbitrary <*> rec n' <*> (Just <$> QC.resize n' QC.arbitrary)
+      in (If <$> QC.resize n' QC.arbitrary <*> rec n' <*> QC.resize n' QC.arbitrary)
+           `QC.suchThat` (not . isAmbiguousIfElse)
+        
     , BackgroundMod <$> rec (n-1)
     , DebugMod <$> rec (n-1)
     , RootMod <$> rec (n-1)
@@ -148,7 +148,7 @@ instance QC.Arbitrary Object where
     , FuncDef <$> QC.arbitrary <*> QC.listOf QC.arbitrary <*> QC.resize (n-1) QC.arbitrary
     ] | n > 0
     ]
-  shrink = QC.genericShrink
+  shrink = filter (not . isAmbiguousIfElse) . QC.genericShrink
 
 instance PP.Pretty Object where
   pretty v = PP.group $ case v of
@@ -222,6 +222,25 @@ instance PP.Pretty Object where
           <> PP.equals
           <+> PP.pretty funcBody
           <> PP.semi)
+
+-- | Is this `Object` an ambiguous if-else expression?
+-- This occurs if an if-else contains a plain if without any braces between it.
+-- Then the else is parsed as belonging to the inner if.
+isAmbiguousIfElse :: Object -> Bool
+isAmbiguousIfElse v = case v of
+  If _ t (Just _) -> 
+    let f e = case e of
+          If _ _ Nothing -> True
+          If _ _ (Just e') -> f e'
+          ForLoop _ _ o -> f o
+          BackgroundMod o -> f o
+          DebugMod o -> f o
+          RootMod o -> f o
+          DisableMod o -> f o
+          Module _ _ (Just o) -> f o
+          _ -> False
+    in f t
+  _ -> False
 
 -- | An OpenSCAD expression
 data Expr
