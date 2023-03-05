@@ -105,6 +105,16 @@ if (true) {
   myModule();
 }|]
     ]
+  , testGroup "*Mod"
+    [ testFormat 80 [s|
+%myModule();|]
+    , testFormat 80 [s|
+#myModule();|]
+    , testFormat 80 [s|
+!myModule();|]
+    , testFormat 80 [s|
+*myModule();|]
+    ]
   ]
  where
    testFormat :: HasCallStack => Int -> String -> TestTree
