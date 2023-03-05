@@ -58,7 +58,27 @@ dumpScad file = do
 
 prettyTests :: TestTree
 prettyTests = testGroup "pretty tests"
-  []
+  [ testGroup "Module"
+    [ testFormat 80 [s|
+myModule();|]
+    , testFormat 10 [s|
+myModule();|]
+    , testFormat 80 [s|
+myModule(arg1);|]
+    , testFormat 80 [s|
+myModule(arg1, arg2);|]
+    , testFormat 80 [s|
+myModule(arg1 = 1.0, arg2);|]
+    , testFormat 80 [s|
+myModule() myModule2();|]
+    , testFormat 20 [s|
+myModule( arg1
+        , arg2 );|]
+    , testFormat 20 [s|
+myModule()
+  myModule2();|]
+    ]
+  ]
  where
    testFormat :: HasCallStack => Int -> String -> TestTree
    testFormat w src = testCase src $ case parse (BS8.pack src) of 

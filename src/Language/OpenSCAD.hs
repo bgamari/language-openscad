@@ -152,8 +152,12 @@ instance PP.Pretty Object where
   pretty v = case v of
     Module i args mBody ->
       PP.pretty i
-      <> PP.tupled (PP.pretty <$> args)
-      <> maybe PP.semi PP.pretty mBody 
+      <> (if null args
+           then PP.lparen <> PP.rparen
+           else PP.align (PP.tupled (PP.pretty <$> args)))
+      <> maybe PP.semi
+               (PP.nest 2 . mappend PP.softline . PP.pretty)
+               mBody 
     ForLoop i e o ->
       "for"
       <> PP.parens (PP.pretty i <> "=" <> PP.pretty e)
