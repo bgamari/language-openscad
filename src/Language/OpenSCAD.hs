@@ -271,6 +271,9 @@ instance QC.Arbitrary Expr where
             , do
                 l <- QC.choose (0,n)
                 EFunc <$> QC.arbitrary <*> QC.vectorOf l (QC.resize (n `div` l) QC.arbitrary)
+            , EIndex <$> QC.resize (n`div`2) QC.arbitrary <*> QC.resize (n`div`2) QC.arbitrary
+            , ETernary <$> QC.resize (n`div`3) QC.arbitrary <*> QC.resize (n`div`3) QC.arbitrary <*> QC.resize (n`div`3) QC.arbitrary
+            , EParen <$> QC.resize (n - 1) QC.arbitrary
             ] ++ catMaybes
             [ genOp p' op
             | (p',ops) <- zip (reverse [1 .. length opTable']) opTable'
