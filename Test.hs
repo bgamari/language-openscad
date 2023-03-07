@@ -20,7 +20,7 @@ import Test.Tasty.Silver
 main :: IO ()
 main = do
     testTree <- getTests
-    defaultMain $ testGroup "tests" [testTree, roundtripTests, exactprintTests, parseTests]
+    defaultMain $ testGroup "tests" [testTree, roundtripTests, exactprintTests, parseTests, prettyTests]
 
 getTests :: IO TestTree
 getTests = do
@@ -55,6 +55,16 @@ dumpScad file = do
     case result of
       Left err -> fail err
       Right a  -> return $ ppShow a
+
+prettyTests :: TestTree
+prettyTests = testGroup "pretty tests"
+  [ testPretty (EString s) ("\"" <> s' <> "\"") 
+  | (s', s) <- [("\\\"","\""), ("\\\\","\\"), ("\\t","\t"), ("\\n","\n"), ("\\r", "\r")]
+  ]
+  where
+    testPretty :: (HasCallStack, PP.Pretty a) => a -> String -> TestTree
+    testPretty e s = testCase s $
+      PP.renderString (PP.layoutPretty PP.defaultLayoutOptions $ PP.pretty e) @?= s
 
 exactprintTests :: TestTree
 exactprintTests = testGroup "exactprint tests"
