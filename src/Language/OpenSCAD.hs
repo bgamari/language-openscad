@@ -25,9 +25,9 @@ import Control.Monad (void)
 import Data.Char (ord, digitToInt)
 import Data.Foldable (foldr')
 import Data.Function (fix)
-import Data.Functor ((<&>))
+import Data.Functor ((<&>), ($>))
 import Data.Functor.Identity (Identity(..))
-import Data.List (foldl')
+import Data.List (foldl', find)
 import Data.Maybe
 import qualified Data.Scientific as Sci
 import qualified Data.CharSet as CS
@@ -337,9 +337,9 @@ instance PP.Pretty Expr where
     ERange r -> PP.pretty r
     EString s ->
       let escape c acc =
-            if c `elem` ("\"\n\t\\\r" :: [Char])
-              then '\\' : c : acc
-              else c : acc
+            case lookup c escapedChars of
+              Just c' -> '\\' : c' : acc
+              Nothing -> c : acc
       in PP.dquotes $ PP.pretty (foldr' escape "" s)
     EBool b -> case b of
       True -> "true"
@@ -461,6 +461,18 @@ sign =
   <|> id <$ char '+'
   <|> pure id
 
+-- | Association list of escaped chars.
+-- Key is the escaped char, value is what gets parsed/printed with a '\' in front.
+-- E.g. the quote '"' character gets parsed/printed as `\"`.
+escapedChars :: [(Char, Char)]
+escapedChars =
+  [ ('\\' , '\\')
+  , ('"' , '"')
+  , ('\t' , 't')
+  , ('\n' , 'n')
+  , ('\r' , 'r')
+  ]
+
 -- | Parse a term of an expression
 term :: Parser Expr
 term = do
@@ -486,7 +498,7 @@ term = do
       return $ EFunc name args
     stringLit = between (char '"') (char '"') $
       many $ escapedChar <|> notChar '"'
-    escapedChar = char '\\' >> anyChar
+    escapedChar = char '\\' >> choice ((\(c, escapeChar) -> char escapeChar $> c) <$> escapedChars)
 
 notIdent :: Parser a -> Parser a
 notIdent parser = do

@@ -209,9 +209,10 @@ myVar
     : false ];|]
     , testFormat 80 [s|
 myVar = "myString";|]
-    , testFormat 80 [s|
-myVar = "myString\"";|]
-    -- TODO: string escapings
+    , testGroup "string escapings"
+      [ testFormat 80 (mconcat ["myVar = \"" <> s <> "\";"])
+      | s <- ["\\\"", "\\\\", "\\t", "\\n", "\\r"]
+      ]
     , testFormat 80 [s|
 myVar = true;|]
     , testFormat 80 [s|
@@ -274,7 +275,7 @@ myVar
       "Parse failure: expected single TopLevel but got:\n" <> show (PP.vsep $ PP.pretty <$> tls)
 
 parseTests :: TestTree
-parseTests = testGroup "parse tests"
+parseTests = testGroup "parse tests" $ 
   [ testParse expression "a[b]" $ EIndex (EVar (Ident "a")) (EVar (Ident "b"))
   , testParse expression "a[b][c]" $ EIndex (EIndex (EVar (Ident "a")) (EVar (Ident "b"))) (EVar (Ident "c"))
   , testParse expression "-1" $ ENum (negate 1)
@@ -284,6 +285,9 @@ parseTests = testGroup "parse tests"
   -- Not supported atm
   -- , testParse expression "--1" $ ENegate (ENum (negate 1))
   -- , testParse expression "+-1" $ ENum (negate 1)
+  ] <>
+  [ testParse expression ("\"" <> s <> "\"") (EString s')
+  | (s, s') <- [("\\\"","\""), ("\\\\","\\"), ("\\t","\t"), ("\\n","\n"), ("\\r", "\r")]
   ]
   where
     testParse :: (Eq a, Show a) => Parser a -> String -> a -> TestTree
