@@ -115,7 +115,10 @@ data Object
 
 instance QC.Arbitrary Object where
   arbitrary = QC.sized $ fix $ \rec n -> QC.oneof $
+    -- use quickcheck `sized` to keep sizes manageable
+    -- expressions are also resized with objects
     [ do
+        -- amount of arguments
         l <- QC.choose (0, n)
         let n' = n `div` (2 * max l 1)
         Module
@@ -123,21 +126,28 @@ instance QC.Arbitrary Object where
           <*> QC.vectorOf l (QC.resize n' QC.arbitrary)
           <*> QC.resize n' QC.arbitrary
     ] <> mconcat [
-    [ ForLoop <$> QC.arbitrary <*> QC.resize (n `div` 2) QC.arbitrary <*> rec (n `div` 2)
+    [ let n' = n `div` 2
+      in ForLoop <$> QC.arbitrary <*> QC.resize n' QC.arbitrary <*> rec n'
     , do
+        -- amount of inner objects
         l <- QC.choose (0, n)
         let n' = n `div` max l 1
         Objects <$> QC.vectorOf l (rec n')
-    , let n' = n `div` 3
-      in (If <$> QC.resize n' QC.arbitrary <*> rec n' <*> QC.resize n' QC.arbitrary)
-           `QC.suchThat` (not . isAmbiguousIfElse)
-        
+    , -- see `isAmbiguousIfElse`, nested if-else objects often must have an
+      -- `Object` in between
+      let n' = n `div` 3
+      in (If <$> QC.resize n' QC.arbitrary
+             <*> rec n'
+             <*> QC.resize n' QC.arbitrary
+         ) `QC.suchThat` (not . isAmbiguousIfElse)
     , BackgroundMod <$> rec (n-1)
     , DebugMod <$> rec (n-1)
     , RootMod <$> rec (n-1)
     , DisableMod <$> rec (n-1)
     , do
+        -- amount of arguments
         l <- QC.choose (0, n)
+        -- amount of inner objects
         l' <- QC.choose (0, n)
         let n' = n `div` (max l 1 * max l' 1)
         ModuleDef
@@ -145,10 +155,14 @@ instance QC.Arbitrary Object where
           <*> QC.vectorOf l ((,) <$> QC.arbitrary <*> QC.resize n' QC.arbitrary)
           <*> QC.vectorOf l' (rec n')
     , VarDef <$> QC.arbitrary <*> QC.resize (n-1) QC.arbitrary
-    , FuncDef <$> QC.arbitrary <*> QC.listOf QC.arbitrary <*> QC.resize (n-1) QC.arbitrary
+    , FuncDef <$> QC.arbitrary
+              <*> QC.listOf QC.arbitrary
+              <*> QC.resize (n-1) QC.arbitrary
     ] | n > 0
     ]
-  shrink = filter (not . isAmbiguousIfElse) . QC.genericShrink
+  shrink =
+    -- make sure the shrinks also satisfy the predicate for `If`-expressions
+    filter (not . isAmbiguousIfElse) . QC.genericShrink
 
 instance PP.Pretty Object where
   pretty v = PP.group $ case v of
@@ -158,13 +172,15 @@ instance PP.Pretty Object where
            then PP.lparen <> PP.rparen
            else PP.align (PP.tupled (PP.pretty <$> args)))
       <> case mBody of
-      Nothing -> PP.semi
-      Just os@(Objects _) -> PP.space <> PP.pretty os
-      Just o -> PP.nest 2 $ PP.line <> PP.pretty o
+          Nothing -> PP.semi
+          -- for `Objects`, the `PP.nest` call is already done
+          Just os@(Objects _) -> PP.space <> PP.pretty os
+          Just o -> PP.nest 2 $ PP.line <> PP.pretty o
     ForLoop i e o ->
       "for"
       <> PP.parens (PP.pretty i <+> "=" <+> PP.pretty e)
       <> case o of
+          -- for `Objects`, the `PP.nest` call is already done
           Objects _ -> PP.space <> PP.pretty o
           _ -> PP.nest 2 $ PP.line <> PP.pretty o
     Objects os -> 
@@ -175,6 +191,7 @@ instance PP.Pretty Object where
       "if"
       <+> PP.parens (PP.pretty c)
       <> (case t of
+            -- for `Objects`, the `PP.nest` call is already done
             Objects _ -> PP.space <> PP.pretty t
             _ -> PP.nest 2 (PP.line <> PP.pretty t)
             )
@@ -272,57 +289,85 @@ data Expr
     deriving (Show, Eq, Generic)
 
 instance QC.Arbitrary Expr where
-  arbitrary = 
-    let
-      arbitraryExpr' :: Int -> Maybe Assoc -> Int -> QC.Gen Expr
-      arbitraryExpr' p mAssoc n = 
-        let
-          simpleTerms
-            = [ EBool <$> QC.arbitrary
-              , EString <$> QC.arbitrary
-              , EVar <$> QC.arbitrary
-              , ENum <$> (QC.arbitrary `QC.suchThat` (>= 0))
-              ]
-          recursiveTerms
-            = [ EParen <$> QC.resize (n-1) QC.arbitrary
-              , do
-                  l <- QC.choose (0,n)
-                  EVec <$> QC.vectorOf l (QC.resize (n `div` l) QC.arbitrary)
-              , ERange <$> QC.resize (n - 1) QC.arbitrary
-              , do
-                  l <- QC.choose (0,n)
-                  EFunc <$> QC.arbitrary <*> QC.vectorOf l (QC.resize (n `div` l) QC.arbitrary)
-              , EIndex <$> QC.resize (n`div`2) (QC.oneof $ simpleTerms <> recursiveTerms) <*> QC.resize (n`div`2) QC.arbitrary
-              ]
-          ops
-            = [ ETernary <$> QC.resize (n`div`3) (QC.oneof simpleTerms) <*> QC.resize (n`div`3) QC.arbitrary <*> QC.resize (n`div`3) QC.arbitrary | p == 0
-              ] ++ catMaybes
-              [ genOp p' op
-              | (p',ops) <- zip (reverse [1 .. length opTable']) opTable'
-              , op <- ops
-              ]
-            where
-              genOp p' op = case op of
-                Prefix (OperatorParser c _)
-                  | p' > p -> Just $ (c <$> subExpr Nothing (n - 1)) `QC.suchThat` \e ->
-                      -- these cases would be parsed as negative numbers instead
-                      case e of
-                        ENegate e' ->
-                          let f e'' = case e'' of
-                                ENum _ -> False
-                                EIndex e''' _ -> f e'''
-                                _ -> True
-                          in f e'
-                        _ -> True
-                Postfix (OperatorParser c _)
-                  | p' > p -> Just $ c <$> subExpr Nothing (n - 1)
-                Infix (OperatorParser c _) assoc'
-                  | p' > p || p' == p && maybe True (== assoc') mAssoc ->
-                  Just $ c <$> subExpr (Just assoc') (n `div` 2) <*> subExpr (Just assoc') (n `div` 2) 
-                _ -> Nothing
-                where subExpr = arbitraryExpr' (p' + 1)
-        in if n <= 0 then QC.oneof simpleTerms else QC.oneof $ recursiveTerms <> ops   
-    in QC.sized (arbitraryExpr' 0 Nothing)
+  arbitrary =
+    -- use quickcheck `sized` to keep sizes manageable
+    -- guide expression generation to efficiently get operators with correct precedence/associativity
+    -- p = current precedence
+    -- mAssoc = current associativity
+    -- n = size
+    QC.sized $ fix (\rec p mAssoc n ->
+      let
+        -- simple non-recursive terms (parsed by `term`)
+        simpleTerms
+          = [ EBool <$> QC.arbitrary
+            , EString <$> QC.arbitrary
+            , EVar <$> QC.arbitrary
+            , ENum <$> (QC.arbitrary `QC.suchThat` (>= 0))
+            ]
+        -- recursive terms (parsed by `term`)
+        -- recursion resets precedence/assoc, this by simply calling `arbitrary`
+        -- instead of `rec`
+        recursiveTerms
+          = [ EParen <$> QC.resize (n-1) QC.arbitrary
+            , do
+                l <- QC.choose (0,n)
+                let n' = n `div` max 1 l
+                EVec <$> QC.vectorOf l (QC.resize n' QC.arbitrary)
+            , ERange <$> QC.resize (n - 1) QC.arbitrary
+            , do
+                l <- QC.choose (0,n)
+                let n' = n `div` max 1 l
+                EFunc <$> QC.arbitrary <*> QC.vectorOf l (QC.resize n' QC.arbitrary)
+            , let n' = n `div` 2
+              in EIndex <$> QC.resize n' (QC.oneof $ simpleTerms <> recursiveTerms)
+                        <*> QC.resize n' QC.arbitrary
+            ]
+        -- operators (parsed by `expression`)
+        ops
+          = [ let n' = n `div` 3
+              in ETernary <$> QC.resize n' (QC.oneof simpleTerms)
+                          <*> QC.resize n' QC.arbitrary
+                          <*> QC.resize n' QC.arbitrary
+            | p == 0 -- don't mix with other operators
+            ] ++ catMaybes -- generate operators with higher precedence
+            [ genOp p' op
+            | (p',ops) <- zip (reverse [1 .. length opTable]) opTable
+            , op <- ops
+            ]
+          where
+            isNegatedNum e = case e of
+              ENegate e' ->
+                let f e'' = case e'' of
+                      ENum _ -> True
+                      EIndex e''' _ -> f e'''
+                      _ -> False
+                in f e'
+              _ -> False
+            genOp p' op = case op of
+              -- NOTE: this generation mechanism relies on the fact that unary
+              -- operators have a higher precedence than binary operators
+              Prefix (OperatorParser c _)
+                | p' > p ->
+                  -- inner operators should have higher precedence
+                  Just $ (c <$> rec (p'+1) Nothing (n - 1))
+                    -- these cases would be parsed as negative numbers instead
+                    `QC.suchThat` (not . isNegatedNum)
+              Postfix (OperatorParser c _)
+                | p' > p ->
+                  -- inner operators should have higher precedence
+                  Just $ c <$> rec (p'+1) Nothing (n - 1)
+              Infix (OperatorParser c _) assoc'
+                | p' > p || p' == p && maybe True (== assoc') mAssoc ->
+                  -- inner operators should have higher precedence
+                  -- or equal precedence and same associativity
+                  let n' = n `div` 2
+                  in Just $ c <$> rec (p'+1) (Just assoc') n'
+                              <*> rec (p'+1) (Just assoc') n' 
+              _ -> Nothing
+      in if n <= 0
+          then QC.oneof simpleTerms
+          else QC.oneof $ recursiveTerms <> ops   
+    ) 0 Nothing
   shrink = QC.genericShrink
 
 instance PP.Pretty Expr where
@@ -488,6 +533,7 @@ term = do
     , ENum <$> double'
     , EParen <$> parens expression
     ]
+  -- build all `EIndex` expressions here
   idxs <- many $ brackets expression <?> "index expression"
   spaces
   return $ foldl' EIndex e idxs
@@ -513,7 +559,7 @@ keyword word = void $ notIdent (symbol word)
 expression :: Parser Expr
 expression =
     choice [ try ternary
-           , buildExpressionParser opTable term
+           , buildExpressionParser opTable' term
            ]
     <?> "expression"
   where
@@ -524,22 +570,22 @@ expression =
         colon
         e3 <- expression
         return $ ETernary e1 e2 e3
+    opTable' :: [[Operator Parser Expr]]
+    opTable' =
+      let mkParser op = case op of
+            Infix (OperatorParser fun p) assoc -> Infix (fun <$ p) assoc
+            Prefix (OperatorParser fun p) -> Prefix (fun <$ p) 
+            Postfix (OperatorParser fun p) -> Postfix (fun <$ p) 
+      in fmap mkParser <$> opTable
 
-opTable :: [[Operator Parser Expr]]
-opTable =
-  let mkParser op = case op of
-        Infix (OperatorParser fun p) assoc -> Infix (fun <$ p) assoc
-        Prefix (OperatorParser fun p) -> Prefix (fun <$ p) 
-        Postfix (OperatorParser fun p) -> Postfix (fun <$ p) 
-  in fmap mkParser <$> opTable'
-
+-- | Internal data structure to keep both the operator and its parser 
 data OperatorParser a = OperatorParser
   { opFun :: a
   , opParser :: Parser ()
   }
 
-opTable' :: [[Operator OperatorParser Expr]]
-opTable' =
+opTable :: [[Operator OperatorParser Expr]]
+opTable =
     [ [ Prefix (OperatorParser ENegate (try $ reservedOp "-" >> notFollowedBy double'))
       , Prefix (OperatorParser id (try $ reservedOp "+" >> notFollowedBy double'))
       , prefix "!" ENot ]
