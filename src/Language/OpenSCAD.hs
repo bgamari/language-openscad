@@ -302,7 +302,7 @@ instance QC.Arbitrary Expr where
           = [ EBool <$> QC.arbitrary
             , EString <$> QC.arbitrary
             , EVar <$> QC.arbitrary
-            , ENum <$> (QC.arbitrary `QC.suchThat` (>= 0))
+            , ENum <$> QC.arbitrary
             ]
         -- recursive terms (parsed by `term`)
         -- recursion resets precedence/assoc, this by simply calling `arbitrary`
@@ -343,15 +343,21 @@ instance QC.Arbitrary Expr where
                       _ -> False
                 in f e'
               _ -> False
+            isNegativeNum e = case e of
+              ENum d -> d < 0
+              EIndex e' _ -> isNegativeNum e'
+              _ -> False
             genOp p' op = case op of
               -- NOTE: this generation mechanism relies on the fact that unary
               -- operators have a higher precedence than binary operators
               Prefix (OperatorParser c _)
                 | p' > p ->
                   -- inner operators should have higher precedence
-                  Just $ (c <$> rec (p'+1) Nothing (n - 1))
-                    -- these cases would be parsed as negative numbers instead
-                    `QC.suchThat` (not . isNegatedNum)
+                  Just $ (c <$> (rec (p'+1) Nothing (n - 1))
+                          -- prefix + sign is not supported
+                          `QC.suchThat` (not . isNegativeNum)
+                         -- negation of num is parsed as sign
+                         ) `QC.suchThat` (not . isNegatedNum)
               Postfix (OperatorParser c _)
                 | p' > p ->
                   -- inner operators should have higher precedence

@@ -292,9 +292,11 @@ parseTests = testGroup "parse tests" $
   , testParse expression "-(1)" $ ENegate (EParen (ENum 1))
   , testParse expression "+1" $ ENum 1
   , testParse expression "+(1)" $ EParen (ENum 1)
+  , testParse expression "-1 + 2" $ EPlus (ENum (negate 1)) (ENum 2)
   -- Not supported atm
   -- , testParse expression "--1" $ ENegate (ENum (negate 1))
   -- , testParse expression "+-1" $ ENum (negate 1)
+  -- , testParse expression "!-1" $ ENot (ENum (negate 1))
   ] <>
   [ testParse expression ("\"" <> s <> "\"") (EString s')
   | (s, s') <- [("\\\"","\""), ("\\\\","\\"), ("\\t","\t"), ("\\n","\n"), ("\\r", "\r")]
