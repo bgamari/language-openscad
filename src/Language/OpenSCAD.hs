@@ -356,7 +356,7 @@ instance QC.Arbitrary Expr where
                         Prefix (OperatorParser c _)
                             | p' > p ->
                                 -- inner operators should have higher precedence
-                                Just $ (c <$> (rec (p'+1) Nothing (n - 1))
+                                Just $ (c <$> rec (p'+1) Nothing (n - 1)
                                         -- prefix + sign is not supported
                                         `QC.suchThat` (not . isNegativeNum)
                                       -- negation of num is parsed as sign
@@ -718,8 +718,8 @@ data TopLevel = TopLevelScope Object
 instance QC.Arbitrary TopLevel where
     arbitrary = QC.oneof
         [ TopLevelScope <$> QC.arbitrary
-        , UseDirective <$> (QC.arbitrary `QC.suchThat` all (/= '>'))
-        , IncludeDirective <$> (QC.arbitrary `QC.suchThat` all (/= '>'))
+        , UseDirective <$> (QC.arbitrary `QC.suchThat` notElem '>')
+        , IncludeDirective <$> (QC.arbitrary `QC.suchThat` notElem '>')
         ]
     shrink = QC.genericShrink
 
