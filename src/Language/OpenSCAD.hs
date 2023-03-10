@@ -863,7 +863,7 @@ parseFile = fmap resultToEither . parseFromFileEx (some topLevel)
 -- | Parse OpenSCAD source
 parse :: BS.ByteString -> Either String [TopLevel]
 parse =
-  resultToEither . parseByteString (some topLevel) mempty . stripComments
+  resultToEither . parseByteString (some topLevel <* eof) mempty . stripComments
 
 resultToEither :: Result a -> Either String a
 resultToEither (Failure err) = Left $ show err
