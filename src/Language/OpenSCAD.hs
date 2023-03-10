@@ -490,14 +490,18 @@ instance PP.Pretty Expr where
 
 -- | @Range start end step@ denotes a list starting at @start@ and
 -- stopping at @end@ with increments of @step@.
-data Range a = Range a a (Maybe a)
+data Range a = Range
+  { rangeStart :: a,
+    rangeEnd :: a,
+    rangeStep :: Maybe a
+  }
   deriving (Show, Eq, Generic1)
 
 instance QC.Arbitrary a => QC.Arbitrary (Range a) where
   arbitrary = Range <$> QC.arbitrary <*> QC.arbitrary <*> QC.arbitrary
 
 instance PP.Pretty a => PP.Pretty (Range a) where
-  pretty (Range start stop step) =
+  pretty (Range start end mStep) =
     PP.align
       . PP.group
       . PP.encloseSep
@@ -505,7 +509,7 @@ instance PP.Pretty a => PP.Pretty (Range a) where
         (PP.flatAlt " ]" "]")
         (PP.flatAlt ": " ":")
       . fmap PP.pretty
-      $ [start, stop] <> maybe [] pure step
+      $ [start] <> maybe [] pure mStep <> [end]
 
 sepByTill :: Parser delim -> Parser end -> Parser a -> Parser [a]
 sepByTill delim end parser = (end *> return []) <|> go []
@@ -539,15 +543,18 @@ refArguments = list <?> "argument list"
     arg = spaces >> Argument <$> expression
 
 -- | Parse a range
+-- see https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/General#Ranges
 range :: Parser (Range Expr)
 range = brackets $ do
-  start <- expression
+  e1 <- expression
   colon
-  stop <- expression
-  step <- option Nothing $ do
+  e2 <- expression
+  me3 <- option Nothing $ do
     colon
     Just <$> expression
-  return $ Range start stop step
+  return $ case me3 of
+    Nothing -> Range {rangeStart = e1, rangeEnd = e2, rangeStep = Nothing}
+    Just e3 -> Range {rangeStart = e1, rangeEnd = e3, rangeStep = Just e2}
 
 -- | Accept decimals, including fractional values lacking a zero to the left of
 -- the decimal point.
