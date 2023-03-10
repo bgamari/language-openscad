@@ -20,7 +20,15 @@ import Text.Trifecta hiding (ident)
 main :: IO ()
 main = do
   testTree <- getTests
-  defaultMain $ testGroup "tests" [testTree, roundtripTests, exactprintTests, parseTests, prettyTests]
+  defaultMain $
+    testGroup
+      "tests"
+      [ testTree,
+        roundtripTests,
+        exactprintTests,
+        parseTests,
+        prettyTests
+      ]
 
 getTests :: IO TestTree
 getTests = do
@@ -47,7 +55,9 @@ roundtripTests =
     parse p = parseString p mempty
     render :: (HasCallStack, PP.Pretty a) => a -> String
     render = PP.renderString . PP.layoutCompact . PP.pretty
-    roundtrip name p = QC.testProperty name $ \e -> parse p (render e) `isSuccess` e
+    roundtrip name p = QC.testProperty name $ \e ->
+      parse p (render e)
+        `isSuccess` e
 
 isSuccess :: Eq a => Result a -> a -> Bool
 (Success a) `isSuccess` b = a == b
@@ -65,13 +75,20 @@ prettyTests =
   testGroup
     "pretty tests"
     [ testPretty (EString s) ("\"" <> s' <> "\"")
-      | (s', s) <- [("\\\"", "\""), ("\\\\", "\\"), ("\\t", "\t"), ("\\n", "\n"), ("\\r", "\r")]
+      | (s', s) <-
+          [ ("\\\"", "\""),
+            ("\\\\", "\\"),
+            ("\\t", "\t"),
+            ("\\n", "\n"),
+            ("\\r", "\r")
+          ]
     ]
   where
     testPretty :: (HasCallStack, PP.Pretty a) => a -> String -> TestTree
     testPretty e s =
       testCase s $
-        PP.renderString (PP.layoutPretty PP.defaultLayoutOptions $ PP.pretty e) @?= s
+        PP.renderString (PP.layoutPretty PP.defaultLayoutOptions $ PP.pretty e)
+          @?= s
 
 exactprintTests :: TestTree
 exactprintTests =
@@ -438,13 +455,20 @@ myVar
          in PP.renderString (PP.layoutPretty opts $ PP.pretty tl) @?= src
       Right tls ->
         assertFailure $
-          "Parse failure: expected single TopLevel but got:\n" <> show (PP.vsep $ PP.pretty <$> tls)
+          "Parse failure: expected single TopLevel but got:\n"
+            <> show (PP.vsep $ PP.pretty <$> tls)
 
 parseTests :: TestTree
 parseTests =
   testGroup "parse tests" $
     [ testParse expression "a[b]" $ EIndex (EVar (Ident "a")) (EVar (Ident "b")),
-      testParse expression "a[b][c]" $ EIndex (EIndex (EVar (Ident "a")) (EVar (Ident "b"))) (EVar (Ident "c")),
+      testParse expression "a[b][c]" $
+        EIndex
+          ( EIndex
+              (EVar (Ident "a"))
+              (EVar (Ident "b"))
+          )
+          (EVar (Ident "c")),
       testParse expression "-1" $ ENum (negate 1),
       testParse expression "-(1)" $ ENegate (EParen (ENum 1)),
       testParse expression "+1" $ ENum 1,
@@ -456,7 +480,13 @@ parseTests =
       -- , testParse expression "!-1" $ ENot (ENum (negate 1))
     ]
       <> [ testParse expression ("\"" <> s <> "\"") (EString s')
-           | (s, s') <- [("\\\"", "\""), ("\\\\", "\\"), ("\\t", "\t"), ("\\n", "\n"), ("\\r", "\r")]
+           | (s, s') <-
+               [ ("\\\"", "\""),
+                 ("\\\\", "\\"),
+                 ("\\t", "\t"),
+                 ("\\n", "\n"),
+                 ("\\r", "\r")
+               ]
          ]
   where
     testParse :: (Eq a, Show a) => Parser a -> String -> a -> TestTree

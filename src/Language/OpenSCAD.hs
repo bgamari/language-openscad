@@ -142,7 +142,9 @@ instance QC.Arbitrary Object where
           <> if n > 0
             then
               [ let n' = n `div` 2
-                 in ForLoop <$> QC.arbitrary <*> QC.resize n' QC.arbitrary <*> rec n',
+                 in ForLoop <$> QC.arbitrary
+                      <*> QC.resize n' QC.arbitrary
+                      <*> rec n',
                 do
                   -- amount of inner objects
                   l <- QC.choose (0, n)
@@ -169,7 +171,9 @@ instance QC.Arbitrary Object where
                   let n' = n `div` (max l 1 * max l' 1)
                   ModuleDef
                     <$> QC.arbitrary
-                    <*> QC.vectorOf l ((,) <$> QC.arbitrary <*> QC.resize n' QC.arbitrary)
+                    <*> QC.vectorOf
+                      l
+                      ((,) <$> QC.arbitrary <*> QC.resize n' QC.arbitrary)
                     <*> QC.vectorOf l' (rec n'),
                 VarDef <$> QC.arbitrary <*> QC.resize (n -1) QC.arbitrary,
                 FuncDef
@@ -234,7 +238,11 @@ instance PP.Pretty Object where
                else
                  PP.align . PP.tupled $
                    moduleArgs <&> \(i, mV) ->
-                     PP.pretty i <> maybe mempty (\v -> PP.space <> PP.equals <+> PP.pretty v) mV
+                     PP.pretty i
+                       <> maybe
+                         mempty
+                         (\v -> PP.space <> PP.equals <+> PP.pretty v)
+                         mV
            )
         <> ( case moduleBody of
                [] -> PP.space <> PP.lbrace <> PP.rbrace
@@ -337,8 +345,8 @@ instance QC.Arbitrary Expr where
                     ENum <$> QC.arbitrary
                   ]
                 -- recursive terms (parsed by `term`)
-                -- recursion resets precedence/assoc, this by simply calling `arbitrary`
-                -- instead of `rec`
+                -- recursion resets precedence/assoc, this by simply calling
+                -- `arbitrary` instead of `rec`
                 recursiveTerms =
                   [ EParen <$> QC.resize (n -1) QC.arbitrary,
                     do
@@ -349,9 +357,13 @@ instance QC.Arbitrary Expr where
                     do
                       l <- QC.choose (0, n)
                       let n' = n `div` max 1 l
-                      EFunc <$> QC.arbitrary <*> QC.vectorOf l (QC.resize n' QC.arbitrary),
+                      EFunc <$> QC.arbitrary
+                        <*> QC.vectorOf l (QC.resize n' QC.arbitrary),
                     let n' = n `div` 2
-                     in EIndex <$> QC.resize n' (QC.oneof $ simpleTerms <> recursiveTerms)
+                     in EIndex
+                          <$> QC.resize
+                            n'
+                            (QC.oneof $ simpleTerms <> recursiveTerms)
                           <*> QC.resize n' QC.arbitrary
                   ]
                 -- operators (parsed by `expression`)
@@ -364,7 +376,8 @@ instance QC.Arbitrary Expr where
                   ]
                     ++ catMaybes -- generate operators with higher precedence
                       [ genOp p' op
-                        | (p', ops) <- zip (reverse [1 .. length opTable]) opTable,
+                        | (p', ops) <-
+                            zip (reverse [1 .. length opTable]) opTable,
                           op <- ops
                       ]
                   where
@@ -463,9 +476,16 @@ instance PP.Pretty Expr where
         $ PP.pretty e1
     where
       prefix op e1 = op <> PP.pretty e1
-      binary op e1 e2 = PP.align $ PP.pretty e1 <> PP.line <> op <+> PP.pretty e2
+      binary op e1 e2 =
+        PP.align $
+          PP.pretty e1 <> PP.line <> op <+> PP.pretty e2
       ternary op1 op2 e1 e2 e3 =
-        let f s = PP.pretty e1 <> s <> op1 <+> PP.pretty e2 <> s <> op2 <+> PP.pretty e3
+        let f s =
+              PP.pretty e1
+                <> s
+                <> op1 <+> PP.pretty e2
+                <> s
+                <> op2 <+> PP.pretty e3
          in PP.group $ PP.align (f PP.line) `PP.flatAlt` f PP.space
 
 -- | @Range start end step@ denotes a list starting at @start@ and
@@ -495,7 +515,12 @@ sepByTill delim end parser = (end *> return []) <|> go []
       let xs' = x : xs
       (end *> return (reverse xs')) <|> (delim >> go xs')
 
-betweenSepBy :: Parser delim -> Parser start -> Parser end -> Parser a -> Parser [a]
+betweenSepBy ::
+  Parser delim ->
+  Parser start ->
+  Parser end ->
+  Parser a ->
+  Parser [a]
 betweenSepBy delim start end parser = start >> sepByTill delim end parser
 
 equals :: Parser Char
@@ -533,7 +558,10 @@ double' =
       [ try $ do
           s <- sign
           n <- decimal
-          f <- try fractExponent <|> (fromInteger <$ char '.') <|> pure fromInteger
+          f <-
+            try fractExponent
+              <|> (fromInteger <$ char '.')
+              <|> pure fromInteger
           return $ realToFrac $ s $ f n,
         do
           s <- sign
@@ -542,16 +570,25 @@ double' =
 
 fractExponent :: forall m. TokenParsing m => m (Integer -> Sci.Scientific)
 fractExponent =
-  (\fract expo n -> (fromInteger n + fract) * expo) <$> fraction <*> option 1 exponent'
-    <|> (\expo n -> fromInteger n * expo) <$> exponent'
+  ( \fract expo n ->
+      (fromInteger n + fract) * expo
+  )
+    <$> fraction
+    <*> option 1 exponent'
+    <|> (\expo n -> fromInteger n * expo)
+    <$> exponent'
   where
     fraction :: m Sci.Scientific
     fraction = foldl' op 0 <$> (char '.' *> (some digit <?> "fraction"))
 
-    op f d = f + Sci.scientific (fromIntegral (digitToInt d)) (Sci.base10Exponent f - 1)
+    op f d =
+      f
+        + Sci.scientific (fromIntegral (digitToInt d)) (Sci.base10Exponent f - 1)
 
     exponent' :: m Sci.Scientific
-    exponent' = ((\f e -> power (f e)) <$ oneOf "eE" <*> sign <*> (decimal <?> "exponent")) <?> "exponent"
+    exponent' =
+      ((\f e -> power (f e)) <$ oneOf "eE" <*> sign <*> (decimal <?> "exponent"))
+        <?> "exponent"
 
     power = Sci.scientific 1 . fromInteger
 
@@ -603,7 +640,9 @@ term = do
     stringLit =
       between (char '"') (char '"') $
         many $ escapedChar <|> notChar '"'
-    escapedChar = char '\\' >> choice ((\(c, escapeChar) -> char escapeChar $> c) <$> escapedChars)
+    escapedChar =
+      char '\\'
+        >> choice ((\(c, escapeChar) -> char escapeChar $> c) <$> escapedChars)
 
 notIdent :: Parser a -> Parser a
 notIdent parser = do
@@ -646,11 +685,16 @@ data OperatorParser a = OperatorParser
 
 opTable :: [[Operator OperatorParser Expr]]
 opTable =
-  [ [ Prefix (OperatorParser ENegate (try $ reservedOp "-" >> notFollowedBy double')),
-      Prefix (OperatorParser id (try $ reservedOp "+" >> notFollowedBy double')),
+  [ [ Prefix
+        (OperatorParser ENegate (try $ reservedOp "-" >> notFollowedBy double')),
+      Prefix
+        (OperatorParser id (try $ reservedOp "+" >> notFollowedBy double')),
       prefix "!" ENot
     ],
-    [binary "*" EMult AssocLeft, binary "/" EDiv AssocLeft, binary "%" EMod AssocLeft],
+    [ binary "*" EMult AssocLeft,
+      binary "/" EDiv AssocLeft,
+      binary "%" EMod AssocLeft
+    ],
     [binary "+" EPlus AssocLeft, binary "-" EMinus AssocLeft],
     [ binary "==" EEquals AssocLeft,
       binary "!=" ENotEquals AssocLeft,
