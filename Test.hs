@@ -491,7 +491,17 @@ parseTests =
             { rangeStart = ENum 0,
               rangeEnd = ENum 10,
               rangeStep = Just (ENum 1)
-            }
+            },
+      testFailure
+        "Invalid single top-level object"
+        [s|
+++invalid;|],
+      testFailure
+        "Invalid top-level object after valid top-level objects"
+        [s|
+b = 2;
+++invalid;
+a = 1;|]
     ]
       <> [ testParse expression ("\"" <> s <> "\"") (EString s')
            | (s, s') <-
@@ -507,3 +517,6 @@ parseTests =
     testParse p s v = testCase s $ case parseString p mempty s of
       Failure e -> assertFailure $ "Parse failure: " <> show e
       Success v' -> v' @?= v
+    testFailure d s = testCase d $ case parse s of
+      Right v -> assertFailure $ "Expected failure, parsed: " <> show v
+      Left _ -> pure ()
