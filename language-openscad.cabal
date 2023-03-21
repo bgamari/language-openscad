@@ -2,7 +2,7 @@ name:                language-openscad
 version:             0.1.7
 x-revision:          1
 synopsis:            A simple parser for OpenSCAD
-description:         A simple parser for OpenSCAD
+description:         OpenSCAD Abstract Syntax Tree with parser and pretty-printer.
 homepage:            http://www.github.com/bgamari/language-openscad
 license:             BSD3
 license-file:        LICENSE
@@ -12,6 +12,10 @@ copyright:           (c) 2014 Ben Gamari
 category:            Language
 build-type:          Simple
 cabal-version:       >=1.10
+tested-with:         GHC ==8.6.5
+extra-source-files:
+  tests/*.scad
+  tests/*.scad.parsed
 
 source-repository head
   type: git
