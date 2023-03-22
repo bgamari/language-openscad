@@ -1,5 +1,5 @@
 name:                language-openscad
-version:             0.1.7
+version:             0.1.8
 x-revision:          1
 synopsis:            A simple parser for OpenSCAD
 description:         OpenSCAD Abstract Syntax Tree with parser and pretty-printer.
